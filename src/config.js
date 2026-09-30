@@ -1,6 +1,11 @@
 import 'dotenv/config'
 
 const digits = value => value.replace(/\D/g, '')
+const int = (value, fallback, min, max) => {
+  const n = Number.parseInt(value, 10)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(max, Math.max(min, n))
+}
 
 export const config = Object.freeze({
   botName: process.env.BOT_NAME || 'Nexa',
@@ -10,9 +15,15 @@ export const config = Object.freeze({
   dataDir: process.env.DATA_DIR || 'data',
   logLevel: process.env.LOG_LEVEL || 'info',
   pairingCode: digits(process.env.PAIRING_CODE || ''),
+  maxMessageLength: int(process.env.MAX_MESSAGE_LENGTH, 8000, 500, 20000),
+  commandCooldownMs: int(process.env.COMMAND_COOLDOWN_MS, 2500, 500, 60000),
+  maxCommandsPerWindow: int(process.env.MAX_COMMANDS_PER_WINDOW, 3, 1, 20),
+  warnLimit: int(process.env.WARN_LIMIT, 3, 1, 10),
   ai: {
     key: process.env.AI_API_KEY || '',
     baseUrl: (process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
-    model: process.env.AI_MODEL || 'gpt-4o-mini'
+    model: process.env.AI_MODEL || 'gpt-4o-mini',
+    maxTurns: int(process.env.AI_MAX_TURNS, 6, 2, 12),
+    timeoutMs: int(process.env.AI_TIMEOUT_MS, 30000, 5000, 120000)
   }
 })
