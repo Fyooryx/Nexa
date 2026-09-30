@@ -566,6 +566,49 @@ export const COMMANDS = [
     return ctx.reply('🔐 Link undangan grup sudah direset.')
   }),
 
+  command('groupconfig', ['gsettings'], 'Group', 'Lihat konfigurasi Nexa di grup.', async ctx => {
+    const meta = await requireGroup(ctx)
+    const group = settings(ctx)
+    return ctx.reply(
+      `*${meta.subject || 'Group'}*\\nPrefix: ${group.prefix || ctx.prefix}\\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\\nJoin approval: WhatsApp-managed\\nDisabled commands: ${group.disabledCommands.length || 'none'}`
+    )
+  }),
+
+  command('resetgroup', [], 'Group', 'Reset konfigurasi Nexa untuk grup.', async ctx => {
+    await requireAdmin(ctx)
+    const group = settings(ctx)
+    group.prefix = null
+    group.antilink = false
+    group.welcome = false
+    group.goodbye = false
+    group.welcomeText = '👋 Selamat datang @user di grup!'
+    group.goodbyeText = '👋 @user keluar dari grup.'
+    group.disabledCommands = []
+    group.warns = {}
+    await ctx.store.persist()
+    return ctx.reply('🧹 Konfigurasi Nexa untuk grup sudah direset.')
+  }),
+
+  command('whois', ['user'], 'Group', 'Lihat identitas target di grup.', async ctx => {
+    const meta = await requireGroup(ctx)
+    const target = await resolveTarget(ctx, meta)
+    if (!target) return ctx.reply('Mention atau reply pesan target.')
+    const participant = meta.participants.find(item => participantJids(item).includes(target))
+    if (!participant) return ctx.reply('Member tidak ditemukan di metadata grup.')
+    const roles = participant.admin === 'superadmin'
+      ? 'superadmin'
+      : participant.admin === 'admin'
+        ? 'admin'
+        : 'member'
+    const lines = [
+      `JID: ${participant.id || '-'}`,
+      `Phone: ${participant.phoneNumber || '-'}`,
+      `LID: ${participant.lid || '-'}`,
+      `Role: ${roles}`
+    ]
+    return ctx.reply(lines.join('\\n'))
+  }),
+
   command('sticker', ['s', 'stiker'], 'Media', 'Ubah gambar menjadi sticker.', async ctx => {
     const image = await findMedia(ctx, 'image')
     if (!image) return ctx.reply(`Kirim atau reply gambar lalu gunakan ${ctx.prefix}sticker`)
