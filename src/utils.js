@@ -2,6 +2,7 @@ import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
 export const normalizeJid = (jid = '') => jid.split(':')[0]
 export const numberFromJid = (jid = '') => normalizeJid(jid).split('@')[0]
+export const isLidJid = (jid = '') => normalizeJid(jid).endsWith('@lid')
 export const isGroupJid = (jid = '') => jid.endsWith('@g.us')
 export const isOwner = (jid, ownerNumber) => Boolean(ownerNumber) && numberFromJid(jid) === ownerNumber
 
@@ -27,6 +28,8 @@ export function getMediaNode(message) {
   const m = unwrapMessage(message)
   if (m?.imageMessage) return { type: 'image', node: m.imageMessage }
   if (m?.stickerMessage) return { type: 'sticker', node: m.stickerMessage }
+  if (m?.videoMessage) return { type: 'video', node: m.videoMessage }
+  if (m?.documentMessage) return { type: 'document', node: m.documentMessage }
   return null
 }
 
@@ -45,7 +48,8 @@ export function getQuotedMessage(message) {
       remoteJid: message?.key?.remoteJid,
       fromMe: false,
       id: ctx.stanzaId,
-      participant: ctx.participant
+      participant: ctx.participant,
+      participantAlt: ctx.participantPn || ctx.participantAlt
     },
     message: ctx.quotedMessage
   }
@@ -86,11 +90,12 @@ export function formatDuration(seconds) {
 }
 
 export function isLikelyUrl(text = '') {
-  return /https?:\/\/[^\s]+/i.test(text)
+  return /(?:https?:\/\/|www\.)[^\s]+/i.test(text)
 }
 
 export function truncate(text = '', max = 6000) {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text
+  const value = String(text)
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value
 }
 
 export function parseCommand(text, prefix) {
@@ -102,5 +107,7 @@ export function parseCommand(text, prefix) {
 }
 
 export function targetFromContext(message, text = '') {
-  return extractMentions(message, text)[0] || getQuotedMessage(message)?.key?.participant || null
+  const extracted = extractMentions(message, text)
+  const quoted = getQuotedMessage(message)?.key
+  return extracted[0] || quoted?.participant || quoted?.participantAlt || null
 }
