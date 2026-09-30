@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
-import { adminParticipants, adminSet, isAdmin, isBotAdmin } from './metadata.js'
+import { adminParticipants, adminSet, isAdmin, isBotAdmin, participantJids } from './metadata.js'
 import {
   downloadNode,
   extractMentions,
@@ -377,9 +377,9 @@ export const COMMANDS = [
   command('kick', ['remove'], 'Moderation', 'Keluarkan member yang ditargetkan.', async ctx => {
     const meta = await requireAdmin(ctx)
     await requireBotAdmin(ctx, meta)
-    const target = targetFromContext(ctx.message.message, ctx.text)
+    const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan member target.')
-    if (isAdmin(meta, target)) return ctx.reply('Target adalah admin. Cabut adminnya dulu.')
+    if (isAdmin(meta, target, ctx.sock)) return ctx.reply('Target adalah admin. Cabut adminnya dulu.')
     await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
     return ctx.reply(`✅ @${numberFromJid(target)} diproses untuk dikeluarkan.`, { mentions: [target] })
   }),
@@ -387,7 +387,7 @@ export const COMMANDS = [
   command('promote', [], 'Moderation', 'Jadikan target admin.', async ctx => {
     const meta = await requireAdmin(ctx)
     await requireBotAdmin(ctx, meta)
-    const target = targetFromContext(ctx.message.message, ctx.text)
+    const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan member target.')
     await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'promote')
     return ctx.reply(`✅ @${numberFromJid(target)} dipromosikan.`, { mentions: [target] })
@@ -396,7 +396,7 @@ export const COMMANDS = [
   command('demote', [], 'Moderation', 'Cabut status admin target.', async ctx => {
     const meta = await requireAdmin(ctx)
     await requireBotAdmin(ctx, meta)
-    const target = targetFromContext(ctx.message.message, ctx.text)
+    const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan admin target.')
     if (isOwner(ctx.sender, config.ownerNumber) && target === ctx.sender) {
       return ctx.reply('Owner tidak bisa menghapus status adminnya sendiri lewat command ini.')
@@ -409,7 +409,7 @@ export const COMMANDS = [
     const meta = await requireAdmin(ctx)
     const target = targetFromContext(ctx.message.message, ctx.text)
     if (!target) return ctx.reply('Mention atau reply pesan member target.')
-    if (isAdmin(meta, target)) return ctx.reply('Target adalah admin.')
+    if (isAdmin(meta, target, ctx.sock)) return ctx.reply('Target adalah admin.')
     const reason = ctx.args.filter(arg => !arg.startsWith('@')).join(' ') || 'tanpa alasan'
     const count = ctx.store.addWarn(ctx.jid, target, truncate(reason, 300))
     await ctx.store.persist()
@@ -440,14 +440,14 @@ export const COMMANDS = [
 
   command('warnings', ['warns'], 'Moderation', 'Lihat warning target.', async ctx => {
     await requireGroup(ctx)
-    const target = targetFromContext(ctx.message.message, ctx.text) || ctx.sender
+    const target = (await resolveTarget(ctx, await requireGroup(ctx))) || ctx.sender
     const count = ctx.store.warnCount(ctx.jid, target)
     return ctx.reply(`⚠️ @${numberFromJid(target)}: ${count}/${config.warnLimit} warning.`, { mentions: [target] })
   }),
 
   command('resetwarn', ['clearwarn'], 'Moderation', 'Reset warning target.', async ctx => {
     await requireAdmin(ctx)
-    const target = targetFromContext(ctx.message.message, ctx.text)
+    const target = await resolveTarget(ctx, await requireGroup(ctx))
     if (!target) return ctx.reply('Mention atau reply target.')
     ctx.store.resetWarn(ctx.jid, target)
     await ctx.store.persist()
@@ -506,6 +506,57 @@ export const COMMANDS = [
     if (!(mode in values)) return ctx.reply(`Pakai: ${ctx.prefix}ephemeral off|24h|7d|90d`)
     await ctx.sock.groupToggleEphemeral(ctx.jid, values[mode])
     return ctx.reply(`🕐 Ephemeral group: ${mode}`)
+  }),
+
+  command('requests', ['joinrequests'], 'Group', 'Lihat permintaan join grup.', async ctx => {
+    await requireAdmin(ctx)
+    await requireBotAdmin(ctx)
+    const requests = await ctx.sock.groupRequestParticipantsList(ctx.jid)
+    if (!requests.length) return ctx.reply('Tidak ada join request.')
+    return ctx.reply(requests.map((item, i) => {
+      const jid = item.jid || item.id || item.lid || ''
+      return `${i + 1}. ${jid}`
+    }).join('\\n'))
+  }),
+
+  command('approve', [], 'Group', 'Setujui join request.', async ctx => {
+    await requireAdmin(ctx)
+    await requireBotAdmin(ctx)
+    const targets = ctx.args.filter(Boolean)
+    if (!targets.length) return ctx.reply(`Pakai: ${ctx.prefix}approve <jid> [...]`)
+    const results = await ctx.sock.groupRequestParticipantsUpdate(ctx.jid, targets, 'approve')
+    return ctx.reply(results.map(item => `${item.jid}: ${item.status}`).join('\\n'))
+  }),
+
+  command('reject', [], 'Group', 'Tolak join request.', async ctx => {
+    await requireAdmin(ctx)
+    await requireBotAdmin(ctx)
+    const targets = ctx.args.filter(Boolean)
+    if (!targets.length) return ctx.reply(`Pakai: ${ctx.prefix}reject <jid> [...]`)
+    const results = await ctx.sock.groupRequestParticipantsUpdate(ctx.jid, targets, 'reject')
+    return ctx.reply(results.map(item => `${item.jid}: ${item.status}`).join('\\n'))
+  }),
+
+  command('addmode', [], 'Group', 'Atur siapa yang dapat menambahkan anggota.', async ctx => {
+    await requireAdmin(ctx)
+    await requireBotAdmin(ctx)
+    const mode = ctx.args[0]?.toLowerCase()
+    if (!['admin_add', 'all_member_add'].includes(mode)) {
+      return ctx.reply(`Pakai: ${ctx.prefix}addmode admin_add|all_member_add`)
+    }
+    await ctx.sock.groupMemberAddMode(ctx.jid, mode)
+    return ctx.reply(`👥 Add mode: ${mode}`)
+  }),
+
+  command('joinapproval', ['joinapprove'], 'Group', 'Aktif/nonaktifkan persetujuan join.', async ctx => {
+    await requireAdmin(ctx)
+    await requireBotAdmin(ctx)
+    const mode = ctx.args[0]?.toLowerCase()
+    if (!['on', 'off'].includes(mode)) {
+      return ctx.reply(`Pakai: ${ctx.prefix}joinapproval on|off`)
+    }
+    await ctx.sock.groupJoinApprovalMode(ctx.jid, mode)
+    return ctx.reply(`🔐 Join approval: ${mode.toUpperCase()}`)
   }),
 
   command('revoke', ['resetlink'], 'Group', 'Cabut link undangan grup.', async ctx => {
