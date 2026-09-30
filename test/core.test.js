@@ -42,3 +42,39 @@ test('JsonStore initializes and persists normalized group state', async () => {
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+import { participantMatches, adminSet } from '../src/metadata.js'
+import { parseCommand, targetFromContext } from '../src/utils.js'
+
+test('LID-aware participant matching recognizes id, phoneNumber and lid', () => {
+  const participant = {
+    id: '12345@lid',
+    phoneNumber: '628123456789@s.whatsapp.net',
+    lid: '12345@lid',
+    admin: 'admin'
+  }
+  assert.equal(participantMatches(participant, '12345@lid'), true)
+  assert.equal(participantMatches(participant, '628123456789@s.whatsapp.net'), true)
+  assert.equal(adminSet({ participants: [participant] }).has('12345@lid'), true)
+})
+
+test('parseCommand honors per-chat prefix', () => {
+  assert.deepEqual(parseCommand('!ping now', '!'), {
+    name: 'ping',
+    args: ['now']
+  })
+  assert.equal(parseCommand('.ping', '!'), null)
+})
+
+test('targetFromContext accepts quoted participant fallback', () => {
+  const message = {
+    extendedTextMessage: {
+      contextInfo: {
+        stanzaId: 'ABC',
+        participant: '999@s.whatsapp.net',
+        quotedMessage: { conversation: 'hello' }
+      }
+    }
+  }
+  assert.equal(targetFromContext(message, 'remove'), '999@s.whatsapp.net')
+})
