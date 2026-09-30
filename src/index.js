@@ -251,7 +251,7 @@ async function handleIncoming(sock, message) {
     isGroupJid(jid)
     && store.isCommandDisabled(jid, cmd.name)
     && !openCommands.has(cmd.name)
-    && !isOwner(sender, config.ownerNumber)
+    && !ownerFromIdentity(sender, senderAlt)
   ) {
     return
   }
