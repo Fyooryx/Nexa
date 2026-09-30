@@ -13,6 +13,8 @@ function normalizeGroup(value) {
     antilink: Boolean(value?.antilink),
     welcome: Boolean(value?.welcome),
     goodbye: Boolean(value?.goodbye),
+    welcomeText: typeof value?.welcomeText === 'string' ? value.welcomeText.slice(0, 500) : '👋 Selamat datang @user di grup!',
+    goodbyeText: typeof value?.goodbyeText === 'string' ? value.goodbyeText.slice(0, 500) : '👋 @user keluar dari grup.',
     disabledCommands: Array.isArray(value?.disabledCommands) ? [...new Set(value.disabledCommands)] : [],
     warns: value?.warns && typeof value.warns === 'object' ? value.warns : {}
   }
