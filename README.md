@@ -1,14 +1,14 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 2.2.0**
+**Current version: 2.3.0**
 
-Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.\n\n**Owner:** Kyren
 
 ## 2.0 upgrade
 
 - hardened reconnect lifecycle with exponential backoff
 - LID-aware group authorization for Baileys v7
-- owner routing supports alternate PN/LID identities
+- owner identity is configurable and defaults to **Kyren**\n- owner routing supports alternate PN/LID identities
 - Baileys browser tuple set to macOS/Chrome for current v7 RC connection compatibility
 - bounded command rate limiting + duplicate-message suppression
 - per-group custom prefix
