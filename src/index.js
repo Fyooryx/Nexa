@@ -258,10 +258,10 @@ async function handleIncoming(sock, message) {
 
   const now = Date.now()
   const last = lastCommand.get(sender) || 0
-  if (now - last < config.commandCooldownMs && !isOwner(sender, config.ownerNumber)) {
+  if (now - last < config.commandCooldownMs && !ownerFromIdentity(sender, senderAlt)) {
     return
   }
-  if (!commandLimiter.allow(sender) && !isOwner(sender, config.ownerNumber)) {
+  if (!commandLimiter.allow(sender) && !ownerFromIdentity(sender, senderAlt)) {
     return ctxBase.reply('⏳ Terlalu banyak command. Coba lagi sebentar.')
   }
   lastCommand.set(sender, now)
