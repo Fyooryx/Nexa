@@ -1,0 +1,21 @@
+{
+  "name": "nexa-whatsapp-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nexa — modular all-in-one WhatsApp bot powered by Baileys.",
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "check": "node --check src/index.js && node --check src/store.js && node --check src/utils.js && node --check src/commands.js"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "dotenv": "^17.2.2",
+    "pino": "^9.9.0",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.34.3"
+  }
+}
