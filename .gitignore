@@ -1,0 +1,7 @@
+node_modules/
+.env
+auth_info/
+data/*.json
+*.log
+npm-debug.log*
+.DS_Store
