@@ -1,34 +1,64 @@
 import makeWASocket, {
   Browsers,
   DisconnectReason,
-  useMultiFileAuthState,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  useMultiFileAuthState
 } from '@whiskeysockets/baileys'
 import qrcode from 'qrcode-terminal'
 import pino from 'pino'
 import { config } from './config.js'
 import { JsonStore } from './store.js'
 import {
+  extractMentions,
   getMessageText,
   isGroupJid,
+  isOwner,
   normalizeJid,
   numberFromJid,
-  isOwner
+  parseCommand
 } from './utils.js'
-import {
-  categories,
-  findCommand,
-  handleGroupAutomation
-} from './commands.js'
+import { categories, findCommand, handleGroupAutomation } from './commands.js'
+import { RateLimiter, MessageDeduper } from './limits.js'
 
 const logger = pino({ level: config.logLevel })
 const store = new JsonStore(config.dataDir)
 await store.init()
 
+const commandLimiter = new RateLimiter({
+  intervalMs: config.commandCooldownMs * config.maxCommandsPerWindow,
+  max: config.maxCommandsPerWindow
+})
+const seenMessages = new MessageDeduper()
+const lastCommand = new Map()
+
 let stopping = false
+let reconnectTimer = null
+let reconnectAttempt = 0
 
 function senderOf(message) {
   return normalizeJid(message.key.participant || message.key.remoteJid || '')
+}
+
+function currentPrefix(jid) {
+  return isGroupJid(jid) ? store.groupPrefix(jid, config.prefix) : config.prefix
+}
+
+function scheduleReconnect() {
+  if (stopping || reconnectTimer) return
+
+  reconnectAttempt += 1
+  const delay = Math.min(30000, 1500 * (2 ** Math.min(reconnectAttempt - 1, 5)))
+  logger.warn({ delay, attempt: reconnectAttempt }, 'scheduling reconnect')
+
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null
+    try {
+      await start()
+    } catch (error) {
+      logger.error({ err: error }, 'reconnect attempt failed')
+      scheduleReconnect()
+    }
+  }, delay)
 }
 
 async function start() {
@@ -39,11 +69,13 @@ async function start() {
   const sock = makeWASocket({
     ...(version ? { version } : {}),
     auth: state,
-    browser: Browsers.macOS('Nexa'),
+    // Chrome tuple avoids a known 428 connection loop seen with Desktop on Baileys 7 RC.
+    browser: Browsers.macOS('Chrome'),
     logger: pino({ level: 'silent' }),
     markOnlineOnConnect: false,
     syncFullHistory: false,
     generateHighQualityLinkPreview: false,
+    connectTimeoutMs: 60000,
     getMessage: async () => undefined
   })
 
@@ -56,7 +88,12 @@ async function start() {
       qrcode.generate(qr, { small: true })
     }
 
-    if ((qr || connection === 'connecting') && !state.creds.registered && config.pairingCode && !pairingRequested) {
+    if (
+      connection === 'connecting'
+      && !state.creds.registered
+      && config.pairingCode
+      && !pairingRequested
+    ) {
       pairingRequested = true
       try {
         const code = await sock.requestPairingCode(config.pairingCode)
@@ -68,30 +105,39 @@ async function start() {
     }
 
     if (connection === 'open') {
-      logger.info({ jid: sock.user?.id }, 'Nexa connected')
+      reconnectAttempt = 0
+      logger.info({ jid: sock.user?.id, name: config.botName }, 'Nexa connected')
     }
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut
       logger.warn({ statusCode, shouldReconnect }, 'WhatsApp connection closed')
-
-      if (shouldReconnect && !stopping) {
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        await start()
-      }
+      if (shouldReconnect) scheduleReconnect()
+      else logger.error('Session logged out; delete auth_info and link Nexa again when needed.')
     }
   })
 
   sock.ev.on('group-participants.update', async ({ id, participants, action }) => {
-    const settings = store.group(id)
-    if ((action === 'add' && settings.welcome) || (action === 'remove' && settings.goodbye)) {
+    const group = store.group(id)
+
+    if (action === 'add' && group.welcome) {
       for (const participant of participants) {
         const mention = `@${numberFromJid(participant)}`
-        const text = action === 'add'
-          ? `👋 Selamat datang ${mention} di grup!`
-          : `👋 ${mention} keluar dari grup.`
-        await sock.sendMessage(id, { text, mentions: [participant] }).catch(() => {})
+        await sock.sendMessage(id, {
+          text: `👋 Selamat datang ${mention} di grup!`,
+          mentions: [participant]
+        }).catch(() => {})
+      }
+    }
+
+    if ((action === 'remove' || action === 'leave') && group.goodbye) {
+      for (const participant of participants) {
+        const mention = `@${numberFromJid(participant)}`
+        await sock.sendMessage(id, {
+          text: `👋 ${mention} keluar dari grup.`,
+          mentions: [participant]
+        }).catch(() => {})
       }
     }
   })
@@ -100,15 +146,22 @@ async function start() {
     if (type !== 'notify') return
 
     for (const message of messages) {
+      if (!message?.message || message.key.fromMe) continue
+      if (seenMessages.seen(message.key.id)) continue
+
       try {
-        if (!message.message || message.key.fromMe) continue
         await handleIncoming(sock, message)
       } catch (error) {
-        logger.error({ err: error }, 'message handler failed')
+        logger.error({
+          err: error,
+          jid: message.key.remoteJid,
+          messageId: message.key.id
+        }, 'message handler failed')
+
         const jid = message.key.remoteJid
         if (jid) {
           await sock.sendMessage(jid, {
-            text: 'Nexa mengalami error saat memproses pesan.'
+            text: '⚠️ Nexa gagal memproses pesan tersebut.'
           }).catch(() => {})
         }
       }
@@ -125,6 +178,14 @@ async function handleIncoming(sock, message) {
   const sender = senderOf(message)
   const text = getMessageText(message).trim()
   if (!text) return
+  if (text.length > config.maxMessageLength) return
+
+  store.bumpMessage(false)
+
+  const prefix = currentPrefix(jid)
+  const parsed = parseCommand(text, prefix)
+  const isCommand = Boolean(parsed)
+  if (isCommand) store.bumpMessage(true)
 
   const ctxBase = {
     sock,
@@ -135,7 +196,7 @@ async function handleIncoming(sock, message) {
     store,
     config,
     logger,
-    prefix: config.prefix,
+    prefix,
     isOwner: isOwner(sender, config.ownerNumber),
     reply: (content, extra = {}) => sock.sendMessage(
       jid,
@@ -144,56 +205,60 @@ async function handleIncoming(sock, message) {
     )
   }
 
-  const state = store.user(sender)
-
-  if (state.afk && !text.startsWith(config.prefix)) {
-    state.afk = null
+  const user = store.user(sender)
+  if (user.afk) {
+    user.afk = null
     await store.persist()
-    await ctxBase.reply('AFK dinonaktifkan karena kamu aktif kembali.')
+    if (!isCommand) await ctxBase.reply('💤 AFK dinonaktifkan karena kamu aktif kembali.')
   }
 
   if (isGroupJid(jid)) {
-    const mentioned = Object.entries(store.data.users).find(([userJid, data]) => (
-      data.afk && text.includes(numberFromJid(userJid))
-    ))
+    const mentioned = extractMentions(message.message, text)
+      .map(normalizeJid)
+      .find(target => store.user(target).afk)
+
     if (mentioned) {
+      const afk = store.user(mentioned).afk
       await sock.sendMessage(jid, {
-        text: `💤 @${numberFromJid(mentioned[0])} sedang AFK: ${mentioned[1].afk.reason}`,
-        mentions: [mentioned[0]]
+        text: `💤 @${numberFromJid(mentioned)} sedang AFK: ${afk.reason}`,
+        mentions: [mentioned]
       })
     }
 
-    const automated = await handleGroupAutomation(ctxBase)
-    if (automated) return
+    if (await handleGroupAutomation(ctxBase)) return
   }
 
-  if (!text.startsWith(config.prefix)) return
+  if (!parsed) return
 
-  const body = text.slice(config.prefix.length).trim()
-  const [name, ...args] = body.split(/\s+/)
-  if (!name) return
-
-  if (name.toLowerCase() === 'menu') {
-    const lines = [`*${config.botName}*`, 'All-in-one WhatsApp bot', '']
-    for (const [category, list] of categories()) {
-      lines.push(`*${category}*`)
-      for (const item of list) lines.push(`• ${config.prefix}${item.name} — ${item.description}`)
-      lines.push('')
-    }
-    lines.push(`Prefix: ${config.prefix}`)
-    return ctxBase.reply(lines.join('\n'))
-  }
-
+  const { name, args } = parsed
   const cmd = findCommand(name)
   if (!cmd) return
 
-  const ctx = {
-    ...ctxBase,
-    args
+  const openCommands = new Set(['menu', 'help', 'enable', 'disable', 'disabled'])
+  if (
+    isGroupJid(jid)
+    && store.isCommandDisabled(jid, cmd.name)
+    && !openCommands.has(cmd.name)
+    && !isOwner(sender, config.ownerNumber)
+  ) {
+    return
   }
+
+  const now = Date.now()
+  const last = lastCommand.get(sender) || 0
+  if (now - last < config.commandCooldownMs && !isOwner(sender, config.ownerNumber)) {
+    return
+  }
+  if (!commandLimiter.allow(sender) && !isOwner(sender, config.ownerNumber)) {
+    return ctxBase.reply('⏳ Terlalu banyak command. Coba lagi sebentar.')
+  }
+  lastCommand.set(sender, now)
+
+  const ctx = { ...ctxBase, args }
 
   try {
     await cmd.run(ctx)
+    await store.persist()
   } catch (error) {
     const messages = {
       GROUP_ONLY: 'Perintah ini hanya bisa dipakai di grup.',
@@ -201,23 +266,30 @@ async function handleIncoming(sock, message) {
       BOT_ADMIN_ONLY: 'Nexa harus menjadi admin grup terlebih dahulu.',
       OWNER_ONLY: 'Perintah ini khusus owner.'
     }
-
-    if (messages[error.message]) {
-      return ctx.reply(`⚠️ ${messages[error.message]}`)
-    }
-
+    if (messages[error.message]) return ctx.reply(`⚠️ ${messages[error.message]}`)
     throw error
   }
 }
 
+setInterval(() => {
+  commandLimiter.prune()
+}, Math.max(config.commandCooldownMs * 10, 10000)).unref()
+
 process.on('SIGINT', () => {
   stopping = true
+  if (reconnectTimer) clearTimeout(reconnectTimer)
   process.exit(0)
 })
 
 process.on('SIGTERM', () => {
   stopping = true
+  if (reconnectTimer) clearTimeout(reconnectTimer)
   process.exit(0)
 })
 
-await start()
+try {
+  await start()
+} catch (error) {
+  logger.error({ err: error }, 'initial Nexa connection failed')
+  scheduleReconnect()
+}
