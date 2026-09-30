@@ -104,8 +104,13 @@ export const COMMANDS = [
 
   command('about', ['botinfo'], 'General', 'Info build Nexa.', async ctx => {
     return ctx.reply(
-      `*${config.botName} v2.0.0*\nModular AIO WhatsApp bot\nEngine: Baileys\nNode: ${process.version}\nPrefix: ${ctx.prefix}`
+      `*${config.botName} v${config.botVersion}*\nModular AIO WhatsApp bot\nOwner: ${config.ownerName}\nEngine: Baileys\nNode: ${process.version}\nPrefix: ${ctx.prefix}`
     )
+  }),
+
+  command('owner', ['creator'], 'General', 'Tampilkan identitas owner Nexa.', async ctx => {
+    const owner = config.ownerNumber ? `https://wa.me/${config.ownerNumber}` : 'Nomor owner belum dikonfigurasi'
+    return ctx.reply(`👑 Owner: ${config.ownerName}\n${owner}`)
   }),
 
   command('id', ['jid'], 'General', 'Tampilkan identitas chat dan sender.', async ctx => {
@@ -185,6 +190,23 @@ export const COMMANDS = [
       `👤 ${ctx.sender}\nAFK: ${user.afk ? 'aktif' : 'tidak aktif'}\nWarnings (chat ini): ${warningCount}`
     )
   }),
+
+  command('pp', ['profilepic'], 'Utility', 'Ambil foto profil target.', async ctx => {
+    const target = isGroupJid(ctx.jid)
+      ? (await resolveTarget(ctx, await requireGroup(ctx)))
+      : (targetFromContext(ctx.message.message, ctx.text) || ctx.sender)
+    if (!target) return ctx.reply('Mention atau reply target.')
+
+    try {
+      const url = await ctx.sock.profilePictureUrl(target, 'image')
+      return ctx.sock.sendMessage(ctx.jid, {
+        image: { url },
+        caption: `Profile picture • ${numberFromJid(target)}`
+      }, { quoted: ctx.message })
+    } catch {
+      return ctx.reply('Foto profil target tidak tersedia atau tidak dapat diakses.')
+    }
+  }, { usage: 'pp [@user]' }),
 
   command('react', [], 'Utility', 'Kirim reaction ke pesan target.', async ctx => {
     const emoji = ctx.args[0] || '👍'
@@ -637,6 +659,22 @@ export const COMMANDS = [
     return ctx.reply(
       `*${config.botName} status*\nUptime: ${formatDuration(process.uptime())}\nAI: ${config.ai.key ? 'configured' : 'not configured'}\nGroups: ${Object.keys(ctx.store.data.groups).length}\nUsers: ${Object.keys(ctx.store.data.users).length}\nMessages: ${ctx.store.data.meta.messages}\nCommands: ${ctx.store.data.meta.commands}`
     )
+  }),
+
+  command('listgroups', ['groups'], 'Owner', 'Lihat grup yang diikuti Nexa.', async ctx => {
+    await requireOwner(ctx)
+    const groups = await ctx.sock.groupFetchAllParticipating()
+    const entries = Object.entries(groups)
+      .map(([jid, meta]) => `${meta.subject || 'Unknown'} — ${jid}`)
+      .sort((a, b) => a.localeCompare(b))
+    if (!entries.length) return ctx.reply('Nexa tidak sedang berada di grup.')
+    return ctx.reply(truncate(entries.join('\\n'), 10000))
+  }),
+
+  command('leave', [], 'Owner', 'Keluarkan Nexa dari grup saat ini.', async ctx => {
+    await requireOwner(ctx)
+    await requireGroup(ctx)
+    await ctx.sock.groupLeave(ctx.jid)
   }),
 
   command('memory', [], 'Owner', 'Lihat penggunaan memory proses.', async ctx => {
