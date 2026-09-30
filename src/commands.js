@@ -27,7 +27,9 @@ async function requireGroup(ctx) {
 
 async function requireAdmin(ctx, meta = null) {
   const metadata = meta || await requireGroup(ctx)
-  if (!isAdmin(metadata, ctx.sender)) throw new Error('ADMIN_ONLY')
+  if (!isAdmin(metadata, ctx.sender, ctx.sock) && !(ctx.senderAlt && isAdmin(metadata, ctx.senderAlt, ctx.sock))) {
+    throw new Error('ADMIN_ONLY')
+  }
   return metadata
 }
 
