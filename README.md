@@ -1,6 +1,6 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 2.1.0**
+**Current version: 2.2.0**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
@@ -8,6 +8,7 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
 - hardened reconnect lifecycle with exponential backoff
 - LID-aware group authorization for Baileys v7
+- owner routing supports alternate PN/LID identities
 - Baileys browser tuple set to macOS/Chrome for current v7 RC connection compatibility
 - bounded command rate limiting + duplicate-message suppression
 - per-group custom prefix
@@ -16,6 +17,8 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 - group admin tools: tagall, tagadmin, kick, promote, demote, warn, warnings, resetwarn
 - group controls: open/close, lock/unlock, ephemeral, subject, description, invite, revoke
 - customizable welcome/goodbye templates via `.setwelcome` and `.setgoodbye`
+- join-request approval/rejection and member-add mode controls
+- group config inspection/reset and target identity inspection
 - media pipeline: image → sticker and sticker → PNG
 - utility tools: time, calc, Base64, SHA-256, reaction
 - AI module with bounded local memory + `.aiclear`
@@ -84,7 +87,15 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 ```text
 .group open
 .group close
+.lock
+.unlock
+.ephemeral off|24h|7d|90d
 .setprefix !
+.requests
+.approve <jid>
+.reject <jid>
+.addmode admin_add|all_member_add
+.joinapproval on|off
 .disable ping
 .enable ping
 .disabled
@@ -93,6 +104,9 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 .setwelcome Selamat datang @user!
 .goodbye on
 .setgoodbye Sampai jumpa @user!
+.groupconfig
+.resetgroup
+.whois @user
 .tagall [message]
 .tagadmin
 .groupinfo
