@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
-import { adminSet, isAdmin, isBotAdmin } from './metadata.js'
+import { adminParticipants, adminSet, isAdmin, isBotAdmin } from './metadata.js'
 import {
   downloadNode,
   extractMentions,
@@ -250,6 +250,20 @@ export const COMMANDS = [
     return ctx.reply(`✅ Group mode: ${mode}`)
   }),
 
+  command('lock', [], 'Group', 'Batasi pesan hanya untuk admin.', async ctx => {
+    const meta = await requireAdmin(ctx)
+    await requireBotAdmin(ctx, meta)
+    await ctx.sock.groupSettingUpdate(ctx.jid, 'locked')
+    return ctx.reply('🔒 Group locked: hanya admin yang dapat mengirim pesan.')
+  }),
+
+  command('unlock', [], 'Group', 'Buka kembali pesan untuk semua member.', async ctx => {
+    const meta = await requireAdmin(ctx)
+    await requireBotAdmin(ctx, meta)
+    await ctx.sock.groupSettingUpdate(ctx.jid, 'unlocked')
+    return ctx.reply('🔓 Group unlocked: semua member dapat mengirim pesan.')
+  }),
+
   command('setprefix', [], 'Group', 'Atur prefix khusus grup.', async ctx => {
     const prefix = ctx.args[0]
     await requireAdmin(ctx)
@@ -314,6 +328,16 @@ export const COMMANDS = [
     return ctx.reply(`Welcome: ${settings(ctx).welcome ? 'ON' : 'OFF'}`)
   }),
 
+  command('setwelcome', [], 'Group', 'Atur teks welcome. Gunakan @user.', async ctx => {
+    await requireAdmin(ctx)
+    const text = ctx.args.join(' ').trim()
+    if (!text) return ctx.reply(`Pakai: ${ctx.prefix}setwelcome Selamat datang @user!`)
+    if (text.length > 500) return ctx.reply('Teks welcome maksimal 500 karakter.')
+    settings(ctx).welcomeText = text
+    await ctx.store.persist()
+    return ctx.reply('✅ Template welcome disimpan.')
+  }, { usage: 'setwelcome <text>' }),
+
   command('goodbye', [], 'Group', 'Aktif/nonaktifkan goodbye.', async ctx => {
     const mode = ctx.args[0]?.toLowerCase()
     if (!['on', 'off'].includes(mode)) return ctx.reply(`Pakai: ${ctx.prefix}goodbye on|off`)
@@ -322,6 +346,16 @@ export const COMMANDS = [
     await ctx.store.persist()
     return ctx.reply(`Goodbye: ${settings(ctx).goodbye ? 'ON' : 'OFF'}`)
   }),
+
+  command('setgoodbye', [], 'Group', 'Atur teks goodbye. Gunakan @user.', async ctx => {
+    await requireAdmin(ctx)
+    const text = ctx.args.join(' ').trim()
+    if (!text) return ctx.reply(`Pakai: ${ctx.prefix}setgoodbye Sampai jumpa @user!`)
+    if (text.length > 500) return ctx.reply('Teks goodbye maksimal 500 karakter.')
+    settings(ctx).goodbyeText = text
+    await ctx.store.persist()
+    return ctx.reply('✅ Template goodbye disimpan.')
+  }, { usage: 'setgoodbye <text>' }),
 
   command('tagall', ['everyone'], 'Group', 'Mention semua member grup.', async ctx => {
     const meta = await requireAdmin(ctx)
@@ -379,7 +413,29 @@ export const COMMANDS = [
     const reason = ctx.args.filter(arg => !arg.startsWith('@')).join(' ') || 'tanpa alasan'
     const count = ctx.store.addWarn(ctx.jid, target, truncate(reason, 300))
     await ctx.store.persist()
-    return ctx.reply(`⚠️ @${numberFromJid(target)} mendapat warning ${count}/${config.warnLimit}.\nAlasan: ${reason}`, { mentions: [target] })
+
+    if (count >= config.warnLimit) {
+      await requireBotAdmin(ctx, meta)
+      ctx.store.resetWarn(ctx.jid, target)
+      await ctx.store.persist()
+      try {
+        await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
+        return ctx.reply(
+          `⛔ @${numberFromJid(target)} mencapai batas warning (${config.warnLimit}) dan diproses untuk dikeluarkan.`,
+          { mentions: [target] }
+        )
+      } catch {
+        return ctx.reply(
+          `⚠️ @${numberFromJid(target)} mencapai batas warning, tetapi pengeluaran gagal.`,
+          { mentions: [target] }
+        )
+      }
+    }
+
+    return ctx.reply(
+      `⚠️ @${numberFromJid(target)} mendapat warning ${count}/${config.warnLimit}.\nAlasan: ${reason}`,
+      { mentions: [target] }
+    )
   }, { usage: 'warn @user [reason]' }),
 
   command('warnings', ['warns'], 'Moderation', 'Lihat warning target.', async ctx => {
@@ -427,10 +483,11 @@ export const COMMANDS = [
 
   command('admins', [], 'Group', 'Daftar admin grup.', async ctx => {
     const meta = await requireGroup(ctx)
-    const admins = [...adminSet(meta)]
+    const admins = adminParticipants(meta)
+    const mentions = admins.map(p => p.id)
     return ctx.sock.sendMessage(ctx.jid, {
-      text: admins.map((jid, i) => `${i + 1}. @${numberFromJid(jid)}`).join('\n'),
-      mentions: admins
+      text: admins.map((p, i) => `${i + 1}. @${numberFromJid(p.id)}`).join('\n'),
+      mentions
     })
   }),
 
@@ -439,6 +496,16 @@ export const COMMANDS = [
     await requireBotAdmin(ctx)
     const code = await ctx.sock.groupInviteCode(ctx.jid)
     return ctx.reply(`https://chat.whatsapp.com/${code}`)
+  }),
+
+  command('ephemeral', [], 'Group', 'Atur pesan sementara grup.', async ctx => {
+    await requireAdmin(ctx)
+    await requireBotAdmin(ctx)
+    const mode = (ctx.args[0] || 'off').toLowerCase()
+    const values = { off: 0, '24h': 86400, '7d': 604800, '90d': 7776000 }
+    if (!(mode in values)) return ctx.reply(`Pakai: ${ctx.prefix}ephemeral off|24h|7d|90d`)
+    await ctx.sock.groupToggleEphemeral(ctx.jid, values[mode])
+    return ctx.reply(`🕐 Ephemeral group: ${mode}`)
   }),
 
   command('revoke', ['resetlink'], 'Group', 'Cabut link undangan grup.', async ctx => {
