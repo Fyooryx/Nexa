@@ -1,5 +1,7 @@
 # Changelog
 
+## 2.4.0 — AIO reliability and native messaging
+
 ## 2.3.0 — Kyren owner identity
 
 ### Added
@@ -13,6 +15,16 @@
 - owner authorization now flows through normalized primary/alternate identity
 - group-admin authorization accepts alternate sender identity
 - removed stale hard-coded 2.0.0 version output
+
+### Added
+- runtime health diagnostics
+- native polls
+- group pin/unpin/delete tools
+- owner profile name/status controls
+
+### Fixed
+- alternate owner identity now bypasses throttling correctly
+- documentation and runtime version metadata are aligned at 2.4.0
 
 ### Verification
 - repository files re-fetched after release commits
