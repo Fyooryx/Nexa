@@ -659,7 +659,7 @@ export const COMMANDS = [
   command('status', ['system'], 'Owner', 'Lihat status runtime internal.', async ctx => {
     await requireOwner(ctx)
     return ctx.reply(
-      `*${config.botName} status*\nUptime: ${formatDuration(process.uptime())}\nAI: ${config.ai.key ? 'configured' : 'not configured'}\nGroups: ${Object.keys(ctx.store.data.groups).length}\nUsers: ${Object.keys(ctx.store.data.users).length}\nMessages: ${ctx.store.data.meta.messages}\nCommands: ${ctx.store.data.meta.commands}`
+      `*${config.botName} status*\nOwner: ${config.ownerName}\nUptime: ${formatDuration(process.uptime())}\nAI: ${config.ai.key ? 'configured' : 'not configured'}\nGroups: ${Object.keys(ctx.store.data.groups).length}\nUsers: ${Object.keys(ctx.store.data.users).length}\nMessages: ${ctx.store.data.meta.messages}\nCommands: ${ctx.store.data.meta.commands}`
     )
   }),
 
