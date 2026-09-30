@@ -84,3 +84,17 @@ import { config } from '../src/config.js'
 test('Nexa owner identity defaults to Kyren', () => {
   assert.equal(config.ownerName, 'Kyren')
 })
+
+import { healthSnapshot, formatHealth } from '../src/health.js'
+
+test('health snapshot exposes Kyren owner and runtime counters', () => {
+  const snapshot = healthSnapshot({
+    sock: { user: { id: 'bot@s.whatsapp.net' } },
+    store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
+    config: { botName: 'Nexa', botVersion: '2.4.0', ownerName: 'Kyren' }
+  })
+  assert.equal(snapshot.owner, 'Kyren')
+  assert.equal(snapshot.connected, true)
+  assert.equal(snapshot.counters.messages, 4)
+  assert.match(formatHealth(snapshot), /Owner: Kyren/)
+})
