@@ -4,7 +4,18 @@ import path from 'node:path'
 const defaults = {
   groups: {},
   users: {},
-  meta: { version: 1 }
+  meta: { version: 2, messages: 0, commands: 0, startedAt: Date.now() }
+}
+
+function normalizeGroup(value) {
+  return {
+    prefix: typeof value?.prefix === 'string' && value.prefix.length <= 3 ? value.prefix : null,
+    antilink: Boolean(value?.antilink),
+    welcome: Boolean(value?.welcome),
+    goodbye: Boolean(value?.goodbye),
+    disabledCommands: Array.isArray(value?.disabledCommands) ? [...new Set(value.disabledCommands)] : [],
+    warns: value?.warns && typeof value.warns === 'object' ? value.warns : {}
+  }
 }
 
 export class JsonStore {
@@ -19,10 +30,13 @@ export class JsonStore {
     await fs.mkdir(this.dir, { recursive: true })
     try {
       const raw = await fs.readFile(this.file, 'utf8')
-      this.data = { ...structuredClone(defaults), ...JSON.parse(raw) }
-      this.data.groups ??= {}
+      const parsed = JSON.parse(raw)
+      this.data = { ...structuredClone(defaults), ...parsed }
+      this.data.groups = Object.fromEntries(
+        Object.entries(this.data.groups || {}).map(([jid, value]) => [jid, normalizeGroup(value)])
+      )
       this.data.users ??= {}
-      this.data.meta ??= { version: 1 }
+      this.data.meta = { ...structuredClone(defaults.meta), ...(this.data.meta || {}) }
     } catch (error) {
       if (error.code !== 'ENOENT') throw error
       await this.persist()
@@ -40,16 +54,53 @@ export class JsonStore {
   }
 
   group(jid) {
-    this.data.groups[jid] ??= {
-      antilink: false,
-      welcome: false,
-      goodbye: false
-    }
+    if (!this.data.groups[jid]) this.data.groups[jid] = normalizeGroup({})
     return this.data.groups[jid]
   }
 
   user(jid) {
     this.data.users[jid] ??= { afk: null }
+    this.data.users[jid].warnings ??= {}
+    this.data.users[jid].aiHistory ??= []
     return this.data.users[jid]
+  }
+
+  groupPrefix(jid, globalPrefix) {
+    return this.group(jid).prefix || globalPrefix
+  }
+
+  isCommandDisabled(jid, name) {
+    return this.group(jid).disabledCommands.includes(name.toLowerCase())
+  }
+
+  setCommandDisabled(jid, name, disabled) {
+    const group = this.group(jid)
+    const normalized = name.toLowerCase()
+    const set = new Set(group.disabledCommands)
+    disabled ? set.add(normalized) : set.delete(normalized)
+    group.disabledCommands = [...set].sort()
+  }
+
+  warnCount(jid, target) {
+    return Number(this.group(jid).warns[target]?.count || 0)
+  }
+
+  addWarn(jid, target, reason) {
+    const group = this.group(jid)
+    const entry = group.warns[target] || { count: 0, items: [] }
+    entry.count += 1
+    entry.items.push({ at: Date.now(), reason: reason || 'tanpa alasan' })
+    entry.items = entry.items.slice(-10)
+    group.warns[target] = entry
+    return entry.count
+  }
+
+  resetWarn(jid, target) {
+    delete this.group(jid).warns[target]
+  }
+
+  bumpMessage(isCommand = false) {
+    this.data.meta.messages = Number(this.data.meta.messages || 0) + 1
+    if (isCommand) this.data.meta.commands = Number(this.data.meta.commands || 0) + 1
   }
 }
