@@ -1,23 +1,27 @@
 # Nexa — All-in-One WhatsApp Bot
 
+**Current version: 2.1.0**
+
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
 ## 2.0 upgrade
 
 - hardened reconnect lifecycle with exponential backoff
+- LID-aware group authorization for Baileys v7
 - Baileys browser tuple set to macOS/Chrome for current v7 RC connection compatibility
 - bounded command rate limiting + duplicate-message suppression
 - per-group custom prefix
 - per-group command disable/enable filter
 - group welcome/goodbye + anti-link
 - group admin tools: tagall, tagadmin, kick, promote, demote, warn, warnings, resetwarn
-- group controls: open/close, subject, description, invite, revoke
+- group controls: open/close, lock/unlock, ephemeral, subject, description, invite, revoke
+- customizable welcome/goodbye templates via `.setwelcome` and `.setgoodbye`
 - media pipeline: image → sticker and sticker → PNG
 - utility tools: time, calc, Base64, SHA-256, reaction
 - AI module with bounded local memory + `.aiclear`
 - owner status + memory diagnostics
 - persistent JSON state with migration/default normalization
-- GitHub Actions syntax validation
+- GitHub Actions dependency install + syntax validation + core tests
 
 ## Requirements
 
@@ -86,7 +90,9 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 .disabled
 .antilink on
 .welcome on
+.setwelcome Selamat datang @user!
 .goodbye on
+.setgoodbye Sampai jumpa @user!
 .tagall [message]
 .tagadmin
 .groupinfo
@@ -95,6 +101,7 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 .desc <text>
 .invite
 .revoke
+.ephemeral off|24h|7d|90d
 ```
 
 ### Moderation
@@ -145,6 +152,7 @@ Important settings:
 
 ```bash
 npm run check
+npm test
 npm run dev
 ```
 
