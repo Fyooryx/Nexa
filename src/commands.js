@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
+import { formatHealth, healthSnapshot } from './health.js'
 import { adminParticipants, adminSet, isAdmin, isBotAdmin, participantJids } from './metadata.js'
 import {
   downloadNode,
@@ -110,6 +111,10 @@ export const COMMANDS = [
     )
   }),
 
+  command('health', [], 'General', 'Tampilkan ringkasan kesehatan runtime.', async ctx => {
+    return ctx.reply(formatHealth(healthSnapshot(ctx)))
+  }),
+
   command('owner', ['creator'], 'General', 'Tampilkan identitas owner Nexa.', async ctx => {
     const owner = config.ownerNumber ? `https://wa.me/${config.ownerNumber}` : 'Nomor owner belum dikonfigurasi'
     return ctx.reply(`👑 Owner: ${config.ownerName}\n${owner}`)
@@ -209,6 +214,47 @@ export const COMMANDS = [
       return ctx.reply('Foto profil target tidak tersedia atau tidak dapat diakses.')
     }
   }, { usage: 'pp [@user]' }),
+
+  command('poll', [], 'Utility', 'Buat polling dari judul dan opsi dipisah |.', async ctx => {
+    const parts = ctx.args.join(' ').split('|').map(item => item.trim()).filter(Boolean)
+    const name = parts.shift()
+    if (!name || parts.length < 2) {
+      return ctx.reply(`Pakai: ${ctx.prefix}poll Judul | Opsi 1 | Opsi 2`)
+    }
+    if (name.length > 200 || parts.length > 12 || parts.some(item => item.length > 100)) {
+      return ctx.reply('Judul maksimal 200 karakter, opsi 2–12 item, masing-masing maksimal 100 karakter.')
+    }
+    return ctx.sock.sendMessage(ctx.jid, {
+      poll: {
+        name,
+        values: parts,
+        selectableCount: 1,
+        toAnnouncementGroup: false
+      }
+    })
+  }, { usage: 'poll <judul> | <opsi 1> | <opsi 2> [...]' }),
+
+  command('pin', [], 'Group', 'Pin pesan yang direply.', async ctx => {
+    const meta = await requireAdmin(ctx)
+    await requireBotAdmin(ctx, meta)
+    const key = getQuotedMessage(ctx.message.message)?.key
+    if (!key?.id) return ctx.reply(`Reply pesan lalu gunakan ${ctx.prefix}pin`)
+    await ctx.sock.sendMessage(ctx.jid, {
+      pin: { type: 1, time: 86400, key }
+    })
+    return ctx.reply('📌 Pesan dipin selama 24 jam.')
+  }, { usage: 'pin (reply pesan)' }),
+
+  command('unpin', [], 'Group', 'Unpin pesan yang direply.', async ctx => {
+    const meta = await requireAdmin(ctx)
+    await requireBotAdmin(ctx, meta)
+    const key = getQuotedMessage(ctx.message.message)?.key
+    if (!key?.id) return ctx.reply(`Reply pesan lalu gunakan ${ctx.prefix}unpin`)
+    await ctx.sock.sendMessage(ctx.jid, {
+      pin: { type: 0, key }
+    })
+    return ctx.reply('📌 Pesan di-unpin.')
+  }, { usage: 'unpin (reply pesan)' }),
 
   command('react', [], 'Utility', 'Kirim reaction ke pesan target.', async ctx => {
     const emoji = ctx.args[0] || '👍'
@@ -655,6 +701,32 @@ export const COMMANDS = [
       caption: 'Nexa • sticker → image'
     }, { quoted: ctx.message })
   }),
+
+  command('setname', [], 'Owner', 'Ubah nama profil WhatsApp Nexa.', async ctx => {
+    await requireOwner(ctx)
+    const name = ctx.args.join(' ').trim()
+    if (!name) return ctx.reply(`Pakai: ${ctx.prefix}setname <nama>`)
+    if (name.length > 25) return ctx.reply('Nama profil maksimal 25 karakter.')
+    await ctx.sock.updateProfileName(name)
+    return ctx.reply(`✅ Nama profil Nexa diubah menjadi: ${name}`)
+  }, { usage: 'setname <name>' }),
+
+  command('setabout', [], 'Owner', 'Ubah About/status profil WhatsApp Nexa.', async ctx => {
+    await requireOwner(ctx)
+    const about = ctx.args.join(' ').trim()
+    if (about.length > 139) return ctx.reply('About maksimal 139 karakter.')
+    await ctx.sock.updateProfileStatus(about)
+    return ctx.reply('✅ About profil Nexa diperbarui.')
+  }, { usage: 'setabout <text>' }),
+
+  command('delete', ['del'], 'Moderation', 'Hapus pesan yang direply dari grup.', async ctx => {
+    const meta = await requireAdmin(ctx)
+    await requireBotAdmin(ctx, meta)
+    const quoted = getQuotedMessage(ctx.message.message)
+    if (!quoted?.key?.id) return ctx.reply(`Reply pesan lalu gunakan ${ctx.prefix}delete`)
+    await ctx.sock.sendMessage(ctx.jid, { delete: quoted.key })
+    return ctx.reply('🗑️ Pesan dihapus.')
+  }, { usage: 'delete (reply pesan)' }),
 
   command('status', ['system'], 'Owner', 'Lihat status runtime internal.', async ctx => {
     await requireOwner(ctx)
