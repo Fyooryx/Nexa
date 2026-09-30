@@ -78,3 +78,9 @@ test('targetFromContext accepts quoted participant fallback', () => {
   }
   assert.equal(targetFromContext(message, 'remove'), '999@s.whatsapp.net')
 })
+
+import { config } from '../src/config.js'
+
+test('Nexa owner identity defaults to Kyren', () => {
+  assert.equal(config.ownerName, 'Kyren')
+})
