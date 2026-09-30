@@ -38,7 +38,7 @@ async function requireBotAdmin(ctx, meta = null) {
 }
 
 async function requireOwner(ctx) {
-  if (!isOwner(ctx.sender, config.ownerNumber)) throw new Error('OWNER_ONLY')
+  if (!ctx.isOwner) throw new Error('OWNER_ONLY')
 }
 
 function settings(ctx) {
@@ -398,7 +398,7 @@ export const COMMANDS = [
     await requireBotAdmin(ctx, meta)
     const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan admin target.')
-    if (isOwner(ctx.sender, config.ownerNumber) && target === ctx.sender) {
+    if (ctx.isOwner && target === ctx.sender) {
       return ctx.reply('Owner tidak bisa menghapus status adminnya sendiri lewat command ini.')
     }
     await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'demote')
