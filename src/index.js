@@ -124,8 +124,9 @@ async function start() {
     if (action === 'add' && group.welcome) {
       for (const participant of participants) {
         const mention = `@${numberFromJid(participant)}`
+        const text = group.welcomeText.replaceAll('@user', mention)
         await sock.sendMessage(id, {
-          text: `👋 Selamat datang ${mention} di grup!`,
+          text,
           mentions: [participant]
         }).catch(() => {})
       }
@@ -134,8 +135,9 @@ async function start() {
     if ((action === 'remove' || action === 'leave') && group.goodbye) {
       for (const participant of participants) {
         const mention = `@${numberFromJid(participant)}`
+        const text = group.goodbyeText.replaceAll('@user', mention)
         await sock.sendMessage(id, {
-          text: `👋 ${mention} keluar dari grup.`,
+          text,
           mentions: [participant]
         }).catch(() => {})
       }
