@@ -36,7 +36,14 @@ let reconnectTimer = null
 let reconnectAttempt = 0
 
 function senderOf(message) {
-  return normalizeJid(message.key.participant || message.key.remoteJid || '')
+  const key = message.key
+  const jid = normalizeJid(key.participant || key.remoteJid || '')
+  const alt = normalizeJid(key.participantAlt || key.remoteJidAlt || '')
+  return { jid, alt: alt && alt !== jid ? alt : null }
+}
+
+function ownerFromIdentity(sender, alt) {
+  return isOwner(sender, config.ownerNumber) || (alt && isOwner(alt, config.ownerNumber))
 }
 
 function currentPrefix(jid) {
@@ -177,7 +184,9 @@ async function handleIncoming(sock, message) {
   const jid = message.key.remoteJid
   if (!jid || jid === 'status@broadcast') return
 
-  const sender = senderOf(message)
+  const identity = senderOf(message)
+  const sender = identity.jid
+  const senderAlt = identity.alt
   const text = getMessageText(message).trim()
   if (!text) return
   if (text.length > config.maxMessageLength) return
@@ -199,7 +208,8 @@ async function handleIncoming(sock, message) {
     config,
     logger,
     prefix,
-    isOwner: isOwner(sender, config.ownerNumber),
+    senderAlt,
+    isOwner: ownerFromIdentity(sender, senderAlt),
     reply: (content, extra = {}) => sock.sendMessage(
       jid,
       { text: content, ...extra },
@@ -217,10 +227,10 @@ async function handleIncoming(sock, message) {
   if (isGroupJid(jid)) {
     const mentioned = extractMentions(message.message, text)
       .map(normalizeJid)
-      .find(target => store.user(target).afk)
+      .find(target => store.data.users[target]?.afk)
 
     if (mentioned) {
-      const afk = store.user(mentioned).afk
+      const afk = store.data.users[mentioned].afk
       await sock.sendMessage(jid, {
         text: `💤 @${numberFromJid(mentioned)} sedang AFK: ${afk.reason}`,
         mentions: [mentioned]
