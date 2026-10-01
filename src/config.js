@@ -9,7 +9,7 @@ const int = (value, fallback, min, max) => {
 
 export const config = Object.freeze({
   botName: process.env.BOT_NAME || 'Nexa',
-  botVersion: '3.3.1',
+  botVersion: '3.4.0',
   ownerName: process.env.OWNER_NAME || 'Kyren',
   prefix: process.env.PREFIX || '.',
   ownerNumber: digits(process.env.OWNER_NUMBER || ''),
