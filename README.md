@@ -69,6 +69,12 @@ Baileys expects the pairing phone number with country code and digits only: no `
 npm start
 ```
 
+For Linux/Termux, the same startup is also available through:
+
+```bash
+bash start.sh
+```
+
 On the first connection, Nexa prints a **pairing code** in the terminal. On the WhatsApp phone that owns `PAIRING_NUMBER`, open **Linked Devices → Link a Device → Link with phone number instead**, then enter the generated code. citeturn296093search3
 
 After pairing succeeds, the session is stored under `AUTH_DIR`; subsequent starts reuse the saved credentials instead of requiring a fresh pairing each time. citeturn296093search3
