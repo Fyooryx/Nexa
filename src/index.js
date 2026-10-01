@@ -130,7 +130,7 @@ async function start() {
     if (
       connection === 'connecting'
       && !state.creds.registered
-      && config.pairingCode
+      && config.pairingNumber
       && !pairingRequested
     ) {
       pairingRequested = true
