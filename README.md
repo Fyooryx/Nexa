@@ -1,30 +1,28 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 2.4.0**
+**Current version: 2.5.0**  
+**Owner: Kyren**
 
-Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.\n\n**Owner:** Kyren
+Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 2.0 upgrade
+## 2.5 upgrade
 
-- hardened reconnect lifecycle with exponential backoff
-- LID-aware group authorization for Baileys v7
-- owner identity is configurable and defaults to **Kyren**\n- owner routing supports alternate PN/LID identities
-- Baileys browser tuple set to macOS/Chrome for current v7 RC connection compatibility
-- bounded command rate limiting + duplicate-message suppression
-- per-group custom prefix
-- per-group command disable/enable filter
-- group welcome/goodbye + anti-link
-- group admin tools: tagall, tagadmin, kick, promote, demote, warn, warnings, resetwarn
-- group controls: open/close, lock/unlock, ephemeral, subject, description, invite, revoke
-- customizable welcome/goodbye templates via `.setwelcome` and `.setgoodbye`
-- join-request approval/rejection and member-add mode controls
-- group config inspection/reset and target identity inspection
-- media pipeline: image → sticker and sticker → PNG
-- utility tools: time, calc, Base64, SHA-256, reaction
-- AI module with bounded local memory + `.aiclear`
-- owner status + memory diagnostics
-- persistent JSON state with migration/default normalization
-- GitHub Actions dependency install + syntax validation + core tests
+- canonical PN/LID identity key for users, cooldowns, and stats
+- real connection-aware health state
+- keyword automod with per-group filter list
+- per-group message and command statistics
+- group avatar update
+- bot avatar update
+- owner block / unblock / blocklist tools
+- native WhatsApp poll support
+- pin / unpin / quoted-message delete tools
+- customizable welcome/goodbye templates
+- join-request approval/rejection and member-add controls
+- group config inspection/reset
+- LID-aware group admin authorization
+- persistent JSON state normalization
+- duplicate-message suppression and command throttling
+- deterministic core unit tests + GitHub Actions verification
 
 ## Requirements
 
@@ -54,28 +52,36 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 ## Commands
 
 ### General
+
 ```text
 .menu
 .help ping
 .ping
 .runtime
 .about
+.owner
+.health
 .id
 .time Asia/Jakarta
 .calc 12*(5+2)
 ```
 
 ### Utility / Fun
+
 ```text
 .base64 encode <text>
 .base64 decode <base64>
 .hash <text>
-.react <emoji>
+.poll Judul | Opsi 1 | Opsi 2
+.react 👍
 .coin
 .dice
+.chatstats
+.pp [@user]
 ```
 
 ### User / AI
+
 ```text
 .afk [reason]
 .profile
@@ -84,6 +90,7 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 ```
 
 ### Group
+
 ```text
 .group open
 .group close
@@ -91,34 +98,47 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 .unlock
 .ephemeral off|24h|7d|90d
 .setprefix !
+.groupconfig
+.resetgroup
+
+.welcome on|off
+.setwelcome Selamat datang @user!
+.goodbye on|off
+.setgoodbye Sampai jumpa @user!
+
+.filter on|off
+.filter add <keyword>
+.filter del <keyword>
+.filter list
+
+.disable ping
+.enable ping
+.disabled
+
+.tagall [message]
+.tagadmin
+.admins
+.groupinfo
+.whois @user
+
+.subject <name>
+.desc <text>
+.setgrouppp
 .requests
 .approve <jid>
 .reject <jid>
 .addmode admin_add|all_member_add
 .joinapproval on|off
-.disable ping
-.enable ping
-.disabled
-.antilink on
-.welcome on
-.setwelcome Selamat datang @user!
-.goodbye on
-.setgoodbye Sampai jumpa @user!
-.groupconfig
-.resetgroup
-.whois @user
-.tagall [message]
-.tagadmin
-.groupinfo
-.admins
-.subject <name>
-.desc <text>
 .invite
 .revoke
-.ephemeral off|24h|7d|90d
+
+.pin
+.unpin
+.delete
 ```
 
 ### Moderation
+
 ```text
 .kick @user
 .promote @user
@@ -129,16 +149,27 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 ```
 
 ### Media
-Use the image/sticker as the current or quoted message:
+
 ```text
 .sticker
 .toimg
 ```
 
+Use the image/sticker as the current or quoted message where required.
+
 ### Owner
+
 ```text
 .status
 .memory
+.listgroups
+.leave
+.setpp
+.setname <name>
+.setabout <text>
+.block @user
+.unblock @user
+.blocklist
 ```
 
 ## Configuration
@@ -146,21 +177,25 @@ Use the image/sticker as the current or quoted message:
 Copy `.env.example` to `.env`.
 
 Important settings:
+
+- `BOT_NAME`: bot display name
+- `OWNER_NAME`: owner display name; defaults to `Kyren`
 - `OWNER_NUMBER`: owner number, digits only
-- `PREFIX`: default command prefix
-- `COMMAND_COOLDOWN_MS` and `MAX_COMMANDS_PER_WINDOW`: command throttling
-- `WARN_LIMIT`: warning display limit
+- `PREFIX`: global command prefix
+- `COMMAND_COOLDOWN_MS` / `MAX_COMMANDS_PER_WINDOW`: command throttling
+- `MAX_MESSAGE_LENGTH`: input safety limit
+- `WARN_LIMIT`: warning threshold
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
 
 - Never commit `.env`, `auth_info/`, or runtime data.
-- Group administrative actions require appropriate group admin privileges and bot admin privileges where WhatsApp requires them.
+- Group administrative actions require appropriate group admin and bot admin privileges where WhatsApp requires them.
 - Nexa does not include broadcast/bulk-message automation.
-- Disable/enable controls are scoped to each group.
-- AI memory can be cleared by the user with `.aiclear`.
-- A command being disabled is not an authorization mechanism; privileged commands still enforce their own checks.
-- A tool response is not treated as proof of successful external state. Commands report only what Nexa actually observes.
+- Per-group command disabling does not replace authorization checks.
+- AI memory can be cleared with `.aiclear`.
+- Runtime status is reported from observed connection state, not from the existence of a socket object.
+- A tool receipt or successful commit is not treated as proof of an external WhatsApp outcome.
 
 ## Development
 
@@ -176,14 +211,22 @@ npm run dev
 src/
 ├── commands.js
 ├── config.js
+├── filters.js
+├── health.js
 ├── index.js
 ├── limits.js
 ├── metadata.js
+├── runtime.js
 ├── store.js
 └── utils.js
+test/
+└── core.test.js
 .github/
 └── workflows/
     └── check.yml
+package.json
+README.md
+CHANGELOG.md
 ```
 
 Nexa is not affiliated with or endorsed by WhatsApp.
