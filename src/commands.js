@@ -424,7 +424,7 @@ export const COMMANDS = [
     }
 
     return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|mode|add|del|list`)
-  }, { usage: 'filter on|off | add|del <keyword> | list' }),
+  }, { usage: 'filter on|off | mode delete|warn | add|del <keyword> | list' }),
 
   command('antilink', [], 'Group', 'Aktif/nonaktifkan filter URL.', async ctx => {
     const mode = ctx.args[0]?.toLowerCase()
