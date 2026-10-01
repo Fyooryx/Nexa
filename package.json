@@ -1,6 +1,6 @@
 {
   "name": "nexa-whatsapp-bot",
-  "version": "2.6.0",
+  "version": "2.8.0",
   "private": true,
   "type": "module",
   "description": "Nexa — modular all-in-one WhatsApp bot powered by Baileys.",
