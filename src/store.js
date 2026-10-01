@@ -90,6 +90,17 @@ export class JsonStore {
     return values.find(value => value.endsWith('@s.whatsapp.net')) || values[0] || ''
   }
 
+  canonicalParticipant(meta, jid) {
+    const target = String(jid || '')
+    const participant = (meta?.participants || []).find(item =>
+      [item?.id, item?.phoneNumber, item?.lid]
+        .filter(Boolean)
+        .map(value => String(value))
+        .includes(target)
+    )
+    return this.canonicalUser(participant?.phoneNumber, participant?.id || participant?.lid) || target
+  }
+
   groupPrefix(jid, globalPrefix) {
     return this.group(jid).prefix || globalPrefix
   }
