@@ -70,6 +70,26 @@ function formatList(title, items) {
 }
 
 export const COMMANDS = [
+  command('diagnose', ['diag'], 'General', 'Ringkasan diagnostik aman untuk setup dan troubleshooting.', async ctx => {
+    const snapshot = healthSnapshot(ctx)
+    const pairing = ctx.config.pairingNumber ? 'configured' : 'empty (QR mode)'
+    return ctx.reply([
+      `*Nexa diagnose*`,
+      `Version: ${snapshot.version}`,
+      `Connection: ${snapshot.connection}`,
+      `Auth: ${snapshot.authMode}`,
+      `Bot identity: ${snapshot.connected ? (ctx.sock.user?.id || '-') : 'not connected'}`,
+      `Pairing number: ${pairing}`,
+      `Groups: ${snapshot.counters.groups}`,
+      `Users: ${snapshot.counters.users}`,
+      `Messages: ${snapshot.counters.messages}`,
+      `Commands: ${snapshot.counters.commands}`,
+      `Reconnects: ${snapshot.reconnects}`,
+      `Memory RSS: ${snapshot.memory.rssMb} MB`,
+      `Metadata cache: ${snapshot.metadataCacheSize}`
+    ].join('\\n'))
+  }),
+
   command('authstatus', ['auth'], 'General', 'Tampilkan mode autentikasi Nexa saat ini.', async ctx => {
     const identity = ctx.sock.user?.id || ''
     const identityNumber = identity.includes('@s.whatsapp.net')
