@@ -103,6 +103,18 @@ async function start() {
   markConnecting()
   const { state, saveCreds } = await useMultiFileAuthState(config.authDir)
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }))
+  const authMode = state.creds.registered
+    ? 'saved-session'
+    : config.pairingNumber
+      ? 'pairing-code'
+      : 'qr'
+
+  if (!state.creds.registered && !config.pairingNumber) {
+    console.log('Nexa auth: QR mode — PAIRING_NUMBER kosong. Scan QR dengan akun WhatsApp yang akan menjadi Nexa.')
+  } else {
+    logger.info({ authMode }, 'Nexa auth mode selected')
+  }
+
   let pairingRequested = false
 
   const sock = makeWASocket({
