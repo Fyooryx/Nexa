@@ -7,6 +7,7 @@ export function addKeyword(group, value) {
   if (!keyword) return false
   group.filters ??= []
   if (group.filters.includes(keyword)) return false
+  if (group.filters.length >= 100) return false
   group.filters.push(keyword)
   group.filters.sort()
   return true
