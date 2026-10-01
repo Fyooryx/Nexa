@@ -96,7 +96,7 @@ import { config } from '../src/config.js'
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.3.1')
+  assert.equal(config.botVersion, '3.4.0')
   assert.equal(config.pairingNumber, '')
 })
 
@@ -106,7 +106,7 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '3.3.1', ownerName: 'Kyren' },
+    config: { botName: 'Nexa', botVersion: '3.4.0', ownerName: 'Kyren' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
   assert.equal(snapshot.owner, 'Kyren')
