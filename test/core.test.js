@@ -10,8 +10,8 @@ import path from 'node:path'
 test('FloodGuard trips after the configured threshold', () => {
   const guard = new FloodGuard({ maxKeys: 20 })
   assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).limited, false)
-  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).firstViolation, false)
-  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).limited, true)
+  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).limited, false)
+  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).firstViolation, true)
   assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).firstViolation, false)
 })
 
@@ -96,6 +96,7 @@ import { config } from '../src/config.js'
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
+  assert.equal(config.botVersion, '3.2.0')
   assert.equal(config.pairingNumber, '')
 })
 
@@ -138,6 +139,13 @@ test('JsonStore counts a command once, not twice', async () => {
     assert.equal(store.group('123@g.us').stats.messages, 1)
     assert.equal(store.group('123@g.us').stats.commands, 1)
     assert.equal(store.user('456@s.whatsapp.net').messages, 1)
+
+    const participant = {
+      id: '12345@lid',
+      phoneNumber: '628123456789@s.whatsapp.net',
+      lid: '12345@lid'
+    }
+    assert.equal(store.canonicalParticipant({ participants: [participant] }, '12345@lid'), '628123456789@s.whatsapp.net')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
