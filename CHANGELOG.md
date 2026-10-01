@@ -12,6 +12,7 @@
 
 ### Security
 - `.diagnose` reports only whether `PAIRING_NUMBER` is configured; it does not print the number
+- `.diagnose` redacts phone-based bot identity instead of exposing a raw JID
 
 
 ## 3.2.0 — QR fallback and identity hardening
