@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
 import { formatHealth, healthSnapshot } from './health.js'
+import { addKeyword, findMatchedKeyword, listKeywords, removeKeyword } from './filters.js'
 import { adminParticipants, adminSet, isAdmin, isBotAdmin, participantJids } from './metadata.js'
 import {
   downloadNode,
@@ -380,6 +381,42 @@ export const COMMANDS = [
     return ctx.reply(list.length ? formatList('Disabled commands', list.map(n => `${ctx.prefix}${n}`)) : 'Tidak ada command yang dinonaktifkan.')
   }),
 
+  command('filter', ['wordfilter'], 'Moderation', 'Kelola keyword filter grup.', async ctx => {
+    await requireAdmin(ctx)
+    const action = ctx.args.shift()?.toLowerCase()
+    const group = settings(ctx)
+
+    if (action === 'on' || action === 'off') {
+      group.filterEnabled = action === 'on'
+      await ctx.store.persist()
+      return ctx.reply(`Keyword filter: ${group.filterEnabled ? 'ON' : 'OFF'}`)
+    }
+
+    if (action === 'add') {
+      const keyword = ctx.args.join(' ').trim()
+      if (!keyword) return ctx.reply(`Pakai: ${ctx.prefix}filter add <keyword>`)
+      if (keyword.length > 80) return ctx.reply('Keyword maksimal 80 karakter.')
+      const added = addKeyword(group, keyword)
+      await ctx.store.persist()
+      return ctx.reply(added ? `✅ Filter ditambahkan: ${keyword}` : 'Keyword tersebut sudah ada.')
+    }
+
+    if (action === 'del' || action === 'remove') {
+      const keyword = ctx.args.join(' ').trim()
+      if (!keyword) return ctx.reply(`Pakai: ${ctx.prefix}filter del <keyword>`)
+      const removed = removeKeyword(group, keyword)
+      await ctx.store.persist()
+      return ctx.reply(removed ? `🧹 Filter dihapus: ${keyword}` : 'Keyword tidak ditemukan.')
+    }
+
+    if (action === 'list' || !action) {
+      const list = listKeywords(group)
+      return ctx.reply(list.length ? formatList('Keyword filters', list) : 'Belum ada keyword filter.')
+    }
+
+    return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|add|del|list`)
+  }, { usage: 'filter on|off | add|del <keyword> | list' }),
+
   command('antilink', [], 'Group', 'Aktif/nonaktifkan filter URL.', async ctx => {
     const mode = ctx.args[0]?.toLowerCase()
     if (!['on', 'off'].includes(mode)) return ctx.reply(`Pakai: ${ctx.prefix}antilink on|off`)
@@ -727,6 +764,64 @@ export const COMMANDS = [
     await ctx.sock.sendMessage(ctx.jid, { delete: quoted.key })
     return ctx.reply('🗑️ Pesan dihapus.')
   }, { usage: 'delete (reply pesan)' }),
+
+  command('chatstats', ['stats'], 'General', 'Lihat statistik chat saat ini.', async ctx => {
+    const group = isGroupJid(ctx.jid) ? settings(ctx) : null
+    const user = ctx.store.user(ctx.sender)
+    const lines = [
+      `Messages total: ${ctx.store.data.meta.messages}`,
+      `Commands total: ${ctx.store.data.meta.commands}`,
+      `Your messages: ${user.messages}`
+    ]
+    if (group) {
+      lines.push(`Group messages: ${group.stats.messages}`)
+      lines.push(`Group commands: ${group.stats.commands}`)
+      lines.push(`Keyword filter: ${group.filterEnabled ? 'ON' : 'OFF'}`)
+    }
+    return ctx.reply(lines.join('\\n'))
+  }),
+
+  command('setgrouppp', ['grouppp'], 'Group', 'Atur foto profil grup dari gambar.', async ctx => {
+    const meta = await requireAdmin(ctx)
+    await requireBotAdmin(ctx, meta)
+    const image = await findMedia(ctx, 'image')
+    if (!image) return ctx.reply(`Kirim atau reply gambar lalu gunakan ${ctx.prefix}setgrouppp`)
+    const input = await downloadNode(image, 'image')
+    await ctx.sock.updateProfilePicture(ctx.jid, input)
+    return ctx.reply('✅ Foto profil grup diperbarui.')
+  }, { usage: 'setgrouppp (reply/kirim gambar)' }),
+
+  command('setpp', ['setbotpp'], 'Owner', 'Atur foto profil Nexa.', async ctx => {
+    await requireOwner(ctx)
+    const image = await findMedia(ctx, 'image')
+    if (!image) return ctx.reply(`Kirim atau reply gambar lalu gunakan ${ctx.prefix}setpp`)
+    const input = await downloadNode(image, 'image')
+    await ctx.sock.updateProfilePicture(ctx.sock.user?.id || '', input)
+    return ctx.reply('✅ Foto profil Nexa diperbarui.')
+  }, { usage: 'setpp (reply/kirim gambar)' }),
+
+  command('block', [], 'Owner', 'Blokir target contact.', async ctx => {
+    await requireOwner(ctx)
+    const target = targetFromContext(ctx.message.message, ctx.text) || ctx.args[0]
+    if (!target) return ctx.reply(`Pakai: ${ctx.prefix}block @user atau reply pesan`)
+    await ctx.sock.updateBlockStatus(target, 'block')
+    return ctx.reply('🚫 Contact diblokir.')
+  }, { usage: 'block @user (atau reply)' }),
+
+  command('unblock', [], 'Owner', 'Buka blokir contact.', async ctx => {
+    await requireOwner(ctx)
+    const target = targetFromContext(ctx.message.message, ctx.text) || ctx.args[0]
+    if (!target) return ctx.reply(`Pakai: ${ctx.prefix}unblock @user atau reply pesan`)
+    await ctx.sock.updateBlockStatus(target, 'unblock')
+    return ctx.reply('✅ Contact di-unblock.')
+  }, { usage: 'unblock @user (atau reply)' }),
+
+  command('blocklist', ['blocked'], 'Owner', 'Lihat contact yang diblokir.', async ctx => {
+    await requireOwner(ctx)
+    const list = await ctx.sock.fetchBlocklist()
+    if (!list?.length) return ctx.reply('Blocklist kosong.')
+    return ctx.reply(truncate(list.map((jid, i) => `${i + 1}. ${jid}`).join('\\n'), 10000))
+  }),
 
   command('status', ['system'], 'Owner', 'Lihat status runtime internal.', async ctx => {
     await requireOwner(ctx)
