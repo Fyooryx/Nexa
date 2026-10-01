@@ -1,10 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { RateLimiter, MessageDeduper } from '../src/limits.js'
+import { FloodGuard } from '../src/flood.js'
 import { JsonStore } from '../src/store.js'
 import { rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+
+test('FloodGuard trips after the configured threshold', () => {
+  const guard = new FloodGuard({ maxKeys: 20 })
+  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).limited, false)
+  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).firstViolation, false)
+  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).limited, true)
+  assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).firstViolation, false)
+})
 
 test('RateLimiter blocks after max calls inside window', () => {
   const limiter = new RateLimiter({ intervalMs: 1000, max: 2 })
@@ -95,7 +104,7 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '2.8.0', ownerName: 'Kyren' },
+    config: { botName: 'Nexa', botVersion: '2.9.0', ownerName: 'Kyren' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
   assert.equal(snapshot.owner, 'Kyren')
