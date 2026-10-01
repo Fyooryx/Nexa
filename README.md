@@ -1,6 +1,6 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.2.0**  
+**Current version: 3.3.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
@@ -124,7 +124,7 @@ Use this command after the bot is connected to inspect its active identity:
 
 `PAIRING_CODE` is still accepted as a legacy environment-variable fallback for existing deployments, but new deployments should use `PAIRING_NUMBER`.
 
-Use `.authstatus` after connection to inspect whether Nexa is using QR, pairing code, or a saved session.
+Use `.authstatus` after connection to inspect whether Nexa is using QR, pairing code, or a saved session. Use `.diagnose` for a broader runtime/setup snapshot; it does not print the configured phone number.
 
 ## Commands
 
@@ -133,6 +133,7 @@ Use `.authstatus` after connection to inspect whether Nexa is using QR, pairing 
 ```text
 .botid
 .authstatus
+.diagnose
 .menu
 .help ping
 .ping
