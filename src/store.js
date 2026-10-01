@@ -16,7 +16,16 @@ function normalizeGroup(value) {
     welcomeText: typeof value?.welcomeText === 'string' ? value.welcomeText.slice(0, 500) : '👋 Selamat datang @user di grup!',
     goodbyeText: typeof value?.goodbyeText === 'string' ? value.goodbyeText.slice(0, 500) : '👋 @user keluar dari grup.',
     disabledCommands: Array.isArray(value?.disabledCommands) ? [...new Set(value.disabledCommands)] : [],
-    warns: value?.warns && typeof value.warns === 'object' ? value.warns : {}
+    filters: Array.isArray(value?.filters)
+      ? [...new Set(value.filters.filter(item => typeof item === 'string').map(item => item.trim().toLocaleLowerCase('id-ID')).filter(Boolean))].slice(0, 100)
+      : [],
+    filterEnabled: Boolean(value?.filterEnabled),
+    filterMode: value?.filterMode === 'warn' ? 'warn' : 'delete',
+    warns: value?.warns && typeof value.warns === 'object' ? value.warns : {},
+    stats: {
+      messages: Number(value?.stats?.messages || 0),
+      commands: Number(value?.stats?.commands || 0)
+    }
   }
 }
 
