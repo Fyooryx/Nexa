@@ -5,7 +5,7 @@
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 2.5 upgrade
+## 2.6 upgrade
 
 - canonical PN/LID identity key for users, cooldowns, and stats
 - real connection-aware health state
