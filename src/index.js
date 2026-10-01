@@ -20,7 +20,7 @@ import {
 import { findCommand, handleGroupAutomation } from './commands.js'
 import { RateLimiter, MessageDeduper } from './limits.js'
 import { findMatchedKeyword } from './filters.js'
-import { isAdmin } from './metadata.js'
+import { isAdmin, isBotAdmin } from './metadata.js'
 import { runtime, markClosed, markConnecting, markOpen } from './runtime.js'
 
 const logger = pino({ level: config.logLevel })
@@ -241,11 +241,30 @@ async function handleIncoming(sock, message) {
         if (matched && !senderIsAdmin) {
           if (group.filterMode === 'warn') {
             const count = store.addWarn(jid, userKey, `keyword filter: ${matched}`)
-            await store.persist()
-            await sock.sendMessage(jid, {
-              text: `⚠️ @${numberFromJid(sender)} mendapat warning ${count}/${config.warnLimit} karena filter grup: "${matched}".`,
-              mentions: [sender]
-            })
+            if (count >= config.warnLimit) {
+              if (isBotAdmin(sock, meta)) {
+                store.resetWarn(jid, userKey)
+                await store.persist()
+                await sock.sendMessage(jid, { delete: message.key }).catch(() => {})
+                await sock.sendMessage(jid, {
+                  text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) karena filter grup dan diproses untuk dikeluarkan.`,
+                  mentions: [sender]
+                })
+                await sock.groupParticipantsUpdate(jid, [sender], 'remove')
+              } else {
+                await store.persist()
+                await sock.sendMessage(jid, {
+                  text: `⚠️ @${numberFromJid(sender)} mencapai warning ${count}/${config.warnLimit}; Nexa tidak dapat melakukan eskalasi otomatis karena belum menjadi admin.`,
+                  mentions: [sender]
+                })
+              }
+            } else {
+              await store.persist()
+              await sock.sendMessage(jid, {
+                text: `⚠️ @${numberFromJid(sender)} mendapat warning ${count}/${config.warnLimit} karena filter grup: "${matched}".`,
+                mentions: [sender]
+              })
+            }
           } else {
             await sock.sendMessage(jid, { delete: message.key })
             await sock.sendMessage(jid, {
@@ -342,17 +361,26 @@ setInterval(() => {
   store.persist().catch(error => logger.warn({ err: error }, 'periodic store flush failed'))
 }, Math.max(config.storeFlushMs, 5000)).unref()
 
-process.on('SIGINT', () => {
-  stopping = true
-  if (reconnectTimer) clearTimeout(reconnectTimer)
-  process.exit(0)
-})
+let shutdownPromise = null
 
-process.on('SIGTERM', () => {
-  stopping = true
-  if (reconnectTimer) clearTimeout(reconnectTimer)
-  process.exit(0)
-})
+async function shutdown(signal) {
+  if (shutdownPromise) return shutdownPromise
+  shutdownPromise = (async () => {
+    stopping = true
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    try {
+      await store.persist()
+    } catch (error) {
+      logger.error({ err: error }, 'final store flush failed')
+    }
+    logger.info({ signal }, 'Nexa shutdown complete')
+    process.exit(0)
+  })()
+  return shutdownPromise
+}
+
+process.on('SIGINT', () => { void shutdown('SIGINT') })
+process.on('SIGTERM', () => { void shutdown('SIGTERM') })
 
 try {
   await start()
