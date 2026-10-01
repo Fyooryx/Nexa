@@ -405,9 +405,20 @@ export const COMMANDS = [
       const keyword = ctx.args.join(' ').trim()
       if (!keyword) return ctx.reply(`Pakai: ${ctx.prefix}filter add <keyword>`)
       if (keyword.length > 80) return ctx.reply('Keyword maksimal 80 karakter.')
+      const normalized = keyword.toLocaleLowerCase('id-ID')
+      if ((group.filters?.length || 0) >= 100 && !group.filters.includes(normalized)) {
+        return ctx.reply('Batas keyword filter adalah 100 item. Hapus filter lama terlebih dahulu.')
+      }
       const added = addKeyword(group, keyword)
       await ctx.store.persist()
       return ctx.reply(added ? `✅ Filter ditambahkan: ${keyword}` : 'Keyword tersebut sudah ada.')
+    }
+
+    if (action === 'clear') {
+      const total = group.filters?.length || 0
+      group.filters = []
+      await ctx.store.persist()
+      return ctx.reply(total ? `🧹 ${total} keyword filter dihapus.` : 'Tidak ada keyword filter untuk dihapus.')
     }
 
     if (action === 'del' || action === 'remove') {
@@ -423,8 +434,8 @@ export const COMMANDS = [
       return ctx.reply(list.length ? formatList('Keyword filters', list) : 'Belum ada keyword filter.')
     }
 
-    return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|mode|add|del|list`)
-  }, { usage: 'filter on|off | mode delete|warn | add|del <keyword> | list' }),
+    return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|mode|add|del|list|clear`)
+  }, { usage: 'filter on|off | mode delete|warn | add|del <keyword> | list|clear' }),
 
   command('antilink', [], 'Group', 'Aktif/nonaktifkan filter URL.', async ctx => {
     const mode = ctx.args[0]?.toLowerCase()
