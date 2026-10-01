@@ -1,11 +1,11 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.0.0**  
+**Current version: 3.1.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.0 upgrade
+## 3.1 upgrade
 
 - canonical PN/LID identity key for users, cooldowns, and stats
 - real connection-aware health state
@@ -29,6 +29,9 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 - TTL group metadata cache for lower repeated metadata traffic
 - fixed missing target-resolution helper used by moderation/media commands
 - canonical PN/LID identity for AFK and AI self state
+- explicit `PAIRING_NUMBER` setup for the bot account
+- `.botid` for checking the connected bot identity
+- repaired group metadata cache helper
 - duplicate-message suppression and command throttling
 - deterministic core unit tests + GitHub Actions verification
 
@@ -39,29 +42,82 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
 ## Setup
 
+Install and prepare the environment:
+
 ```bash
 npm install
 cp .env.example .env
+```
+
+Edit `.env` before starting:
+
+```text
+BOT_NAME=Nexa
+OWNER_NAME=Kyren
+OWNER_NUMBER=628xxxxxxxxxx
+PAIRING_NUMBER=628xxxxxxxxxx
+```
+
+`PAIRING_NUMBER` is the **WhatsApp phone number of the account that will become Nexa**. `OWNER_NUMBER` is the phone number allowed to use owner-only commands. They can be the same account, but they represent different roles in the configuration.
+
+### Start with bot number + pairing code
+
+Baileys expects the pairing phone number with country code and digits only: no `+`, spaces, parentheses, or hyphens. Nexa passes `PAIRING_NUMBER` to `requestPairingCode()`. citeturn296093search1turn296093search3
+
+```bash
 npm start
 ```
 
-On first run, Nexa prints a QR code in the terminal. Scan it from WhatsApp → Linked devices.
+On the first connection, Nexa prints a **pairing code** in the terminal. On the WhatsApp phone that owns `PAIRING_NUMBER`, open **Linked Devices → Link a Device → Link with phone number instead**, then enter the generated code. citeturn296093search3
 
-### Pairing code
+After pairing succeeds, the session is stored under `AUTH_DIR`; subsequent starts reuse the saved credentials instead of requiring a fresh pairing each time. citeturn296093search3
 
-Set `PAIRING_CODE` to digits only with country code:
+### Start with QR
+
+Leave `PAIRING_NUMBER` empty:
 
 ```text
-6281234567890
+PAIRING_NUMBER=
 ```
 
-QR login remains the baseline path. Pairing-code behavior may change with upstream Baileys releases.
+Then run:
+
+```bash
+npm start
+```
+
+Nexa will display a QR code in the terminal. Scan it from WhatsApp → Linked Devices.
+
+### Put the bot into a group
+
+Once the WhatsApp account is linked, **the number stored in `PAIRING_NUMBER` is the bot's WhatsApp number**. Add that number to a group exactly like a normal WhatsApp contact/member.
+
+The practical order is:
+
+```text
+1. Link the bot account.
+2. Open the target group from another member/admin account.
+3. Add the bot's WhatsApp number to the group.
+4. Make the bot an admin if you want moderation/group-management features.
+5. Send .menu in the group to confirm Nexa is responding.
+```
+
+Features such as kicking members, deleting filtered messages, changing group settings, pinning, and similar administrative actions require Nexa to have the appropriate group permissions.
+
+Use this command after the bot is connected to inspect its active identity:
+
+```text
+.botid
+```
+
+`PAIRING_CODE` is still accepted as a legacy environment-variable fallback for existing deployments, but new deployments should use `PAIRING_NUMBER`.
 
 ## Commands
 
 ### General
 
 ```text
+.botid
 .menu
 .help ping
 .ping
