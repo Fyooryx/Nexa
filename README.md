@@ -1,11 +1,11 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.3.0**  
+**Current version: 3.3.1**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.1 upgrade
+## 3.3.1 upgrade
 
 - canonical PN/LID identity key for users, cooldowns, and stats
 - real connection-aware health state
@@ -267,6 +267,7 @@ Important settings:
 - `BOT_NAME`: bot display name
 - `OWNER_NAME`: owner display name; defaults to `Kyren`
 - `OWNER_NUMBER`: owner number, digits only
+- `PAIRING_NUMBER`: bot account number for pairing-code mode; currently configured in `.env.example`
 - `PREFIX`: global command prefix
 - `COMMAND_COOLDOWN_MS` / `MAX_COMMANDS_PER_WINDOW`: command throttling
 - `MAX_MESSAGE_LENGTH`: input safety limit
