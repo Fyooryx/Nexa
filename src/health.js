@@ -5,7 +5,7 @@ function mb(value) {
   return Math.round(value / 1024 / 1024)
 }
 
-export function healthSnapshot({ sock, store, config, runtimeState = runtime }) {
+export function healthSnapshot({ sock, store, config, runtimeState = runtime, authMode = 'unknown', metadataCacheSize = 0 }) {
   const memory = process.memoryUsage()
 
   return {
@@ -18,6 +18,8 @@ export function healthSnapshot({ sock, store, config, runtimeState = runtime }) 
     lastDisconnectedAt: runtimeState.lastDisconnectedAt,
     lastDisconnectCode: runtimeState.lastDisconnectCode,
     reconnects: runtimeState.reconnects,
+    authMode: authMode || 'unknown',
+    metadataCacheSize: Number(metadataCacheSize || 0),
     uptime: formatDuration(process.uptime()),
     node: process.version,
     memory: {
