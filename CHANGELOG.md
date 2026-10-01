@@ -1,15 +1,18 @@
 # Changelog
 
-## 2.8.0 — Filter capacity and management
+## 2.9.0 — Anti-flood and metadata caching
 
 ### Added
-- `.filter clear` to remove all group keyword filters
-- runtime enforcement of a 100-keyword group filter limit
+- `.antiflood on|off|status|config`
+- configurable per-group flood threshold, window, and delete/warn mode
+- bounded flood guard with periodic pruning
+- short-lived group metadata cache wired into the Baileys socket
 
 ### Fixed
-- `.filter add` can no longer grow the in-memory filter list beyond the supported capacity
-- package version and documentation are synchronized at 2.8.0
+- group participant updates refresh cached metadata after membership changes
+- anti-flood exemptions use PN/LID-aware admin identity checks
+- warning-mode flood escalation only emits one warning per flood-window violation
 
 ### Verification
-- filter unit coverage now checks the keyword capacity
+- source and test files were re-fetched after updates
 - live WhatsApp end-to-end behavior remains unverified without an authenticated session
