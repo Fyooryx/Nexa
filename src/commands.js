@@ -12,7 +12,6 @@ import {
   getQuotedMessage,
   isGroupJid,
   isLikelyUrl,
-  isOwner,
   numberFromJid,
   targetFromContext,
   truncate
