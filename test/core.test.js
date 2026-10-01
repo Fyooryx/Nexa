@@ -91,10 +91,21 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '2.4.0', ownerName: 'Kyren' }
+    config: { botName: 'Nexa', botVersion: '2.5.0', ownerName: 'Kyren' }
   })
   assert.equal(snapshot.owner, 'Kyren')
   assert.equal(snapshot.connected, true)
   assert.equal(snapshot.counters.messages, 4)
   assert.match(formatHealth(snapshot), /Owner: Kyren/)
+})
+
+import { addKeyword, findMatchedKeyword, removeKeyword } from '../src/filters.js'
+
+test('keyword filter add/remove/match lifecycle', () => {
+  const group = { filters: [] }
+  assert.equal(addKeyword(group, 'Scam'), true)
+  assert.equal(addKeyword(group, 'scam'), false)
+  assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), 'scam')
+  assert.equal(removeKeyword(group, 'SCAM'), true)
+  assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), null)
 })
