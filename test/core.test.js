@@ -124,7 +124,7 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), 'scam')
   assert.equal(removeKeyword(group, 'SCAM'), true)
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), null)
-  for (let i = 0; i < 99; i++) assert.equal(addKeyword(group, `word-${i}`), true)
+  for (let i = 0; i < 100; i++) assert.equal(addKeyword(group, `word-${i}`), true)
   assert.equal(addKeyword(group, 'overflow-a'), false)
 })
 
