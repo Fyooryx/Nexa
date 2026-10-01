@@ -17,9 +17,10 @@ import {
   numberFromJid,
   parseCommand
 } from './utils.js'
-import { categories, findCommand, handleGroupAutomation } from './commands.js'
+import { findCommand, handleGroupAutomation } from './commands.js'
 import { RateLimiter, MessageDeduper } from './limits.js'
 import { findMatchedKeyword } from './filters.js'
+import { isAdmin } from './metadata.js'
 import { runtime, markClosed, markConnecting, markOpen } from './runtime.js'
 
 const logger = pino({ level: config.logLevel })
@@ -235,17 +236,23 @@ async function handleIncoming(sock, message) {
       try {
         const meta = await sock.groupMetadata(jid)
         if (!meta || !meta.participants) return
-        const isAdmin = meta.participants.some(participant =>
-          [participant.id, participant.phoneNumber, participant.lid].filter(Boolean).map(normalizeJid).includes(sender)
-          || [participant.id, participant.phoneNumber, participant.lid].filter(Boolean).map(normalizeJid).includes(senderAlt || '')
-        )
+        const senderIsAdmin = isAdmin(meta, sender, sock) || (senderAlt && isAdmin(meta, senderAlt, sock))
         const matched = findMatchedKeyword(text, group)
-        if (matched && !isAdmin) {
-          await sock.sendMessage(jid, { delete: message.key })
-          await sock.sendMessage(jid, {
-            text: `⚠️ Pesan @${numberFromJid(sender)} dihapus oleh Nexa karena filter grup: "${matched}".`,
-            mentions: [sender]
-          })
+        if (matched && !senderIsAdmin) {
+          if (group.filterMode === 'warn') {
+            const count = store.addWarn(jid, userKey, `keyword filter: ${matched}`)
+            await store.persist()
+            await sock.sendMessage(jid, {
+              text: `⚠️ @${numberFromJid(sender)} mendapat warning ${count}/${config.warnLimit} karena filter grup: "${matched}".`,
+              mentions: [sender]
+            })
+          } else {
+            await sock.sendMessage(jid, { delete: message.key })
+            await sock.sendMessage(jid, {
+              text: `⚠️ Pesan @${numberFromJid(sender)} dihapus oleh Nexa karena filter grup: "${matched}".`,
+              mentions: [sender]
+            })
+          }
           return
         }
       } catch (error) {
@@ -313,9 +320,27 @@ async function handleIncoming(sock, message) {
   }
 }
 
+function pruneLastCommand(maxAgeMs = 60 * 60 * 1000, maxKeys = 10000) {
+  const cutoff = Date.now() - maxAgeMs
+  for (const [key, timestamp] of lastCommand) {
+    if (timestamp >= cutoff) continue
+    lastCommand.delete(key)
+  }
+
+  if (lastCommand.size <= maxKeys) return
+  const excess = lastCommand.size - maxKeys
+  let removed = 0
+  for (const key of lastCommand.keys()) {
+    lastCommand.delete(key)
+    if (++removed >= excess) break
+  }
+}
+
 setInterval(() => {
   commandLimiter.prune()
-}, Math.max(config.commandCooldownMs * 10, 10000)).unref()
+  pruneLastCommand()
+  store.persist().catch(error => logger.warn({ err: error }, 'periodic store flush failed'))
+}, Math.max(config.storeFlushMs, 5000)).unref()
 
 process.on('SIGINT', () => {
   stopping = true
