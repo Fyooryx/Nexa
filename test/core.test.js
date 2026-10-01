@@ -96,7 +96,7 @@ import { config } from '../src/config.js'
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.2.0')
+  assert.equal(config.botVersion, '3.3.0')
   assert.equal(config.pairingNumber, '')
 })
 
@@ -157,6 +157,8 @@ test('commands exposes authstatus and canonical self-state uses userKey', async 
   const source = await readFile(new URL('../src/commands.js', import.meta.url), 'utf8')
   assert.match(source, /async function resolveTarget\(ctx, meta\)/)
   assert.match(source, /command\('authstatus'/)
+  assert.match(source, /command\('diagnose'/)
+  assert.match(source, /function safeIdentity\(jid\)/)
   assert.doesNotMatch(source, /ctx\.store\.user\(ctx\.sender\)\.afk/)
   assert.doesNotMatch(source, /const user = ctx\.store\.user\(ctx\.sender\)/)
 })
