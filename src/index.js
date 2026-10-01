@@ -19,6 +19,8 @@ import {
 } from './utils.js'
 import { categories, findCommand, handleGroupAutomation } from './commands.js'
 import { RateLimiter, MessageDeduper } from './limits.js'
+import { findMatchedKeyword } from './filters.js'
+import { runtime, markClosed, markConnecting, markOpen } from './runtime.js'
 
 const logger = pino({ level: config.logLevel })
 const store = new JsonStore(config.dataDir)
@@ -69,6 +71,7 @@ function scheduleReconnect() {
 }
 
 async function start() {
+  markConnecting()
   const { state, saveCreds } = await useMultiFileAuthState(config.authDir)
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }))
   let pairingRequested = false
@@ -113,11 +116,13 @@ async function start() {
 
     if (connection === 'open') {
       reconnectAttempt = 0
+      markOpen()
       logger.info({ jid: sock.user?.id, name: config.botName }, 'Nexa connected')
     }
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode
+      markClosed(statusCode)
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut
       logger.warn({ statusCode, shouldReconnect }, 'WhatsApp connection closed')
       if (shouldReconnect) scheduleReconnect()
@@ -187,16 +192,19 @@ async function handleIncoming(sock, message) {
   const identity = senderOf(message)
   const sender = identity.jid
   const senderAlt = identity.alt
+  const userKey = store.canonicalUser(sender, senderAlt)
   const text = getMessageText(message).trim()
   if (!text) return
   if (text.length > config.maxMessageLength) return
 
-  store.bumpMessage(false)
+  store.bumpMessage({ jid, sender: userKey, isCommand: false })
 
   const prefix = currentPrefix(jid)
   const parsed = parseCommand(text, prefix)
   const isCommand = Boolean(parsed)
-  if (isCommand) store.bumpMessage(true)
+  if (isCommand) {
+    store.bumpMessage({ jid, sender: userKey, isCommand: true })
+  }
 
   const ctxBase = {
     sock,
@@ -217,7 +225,7 @@ async function handleIncoming(sock, message) {
     )
   }
 
-  const user = store.user(sender)
+  const user = store.user(userKey)
   if (user.afk) {
     user.afk = null
     await store.persist()
@@ -225,8 +233,32 @@ async function handleIncoming(sock, message) {
   }
 
   if (isGroupJid(jid)) {
+    const group = store.group(jid)
+    if (group.filterEnabled && !isCommand) {
+      try {
+        const meta = await sock.groupMetadata(jid)
+        if (!meta || !meta.participants) return
+        const isAdmin = meta.participants.some(participant =>
+          [participant.id, participant.phoneNumber, participant.lid].filter(Boolean).map(normalizeJid).includes(sender)
+          || [participant.id, participant.phoneNumber, participant.lid].filter(Boolean).map(normalizeJid).includes(senderAlt || '')
+        )
+        const matched = findMatchedKeyword(text, group)
+        if (matched && !isAdmin) {
+          await sock.sendMessage(jid, { delete: message.key })
+          await sock.sendMessage(jid, {
+            text: `⚠️ Pesan @${numberFromJid(sender)} dihapus oleh Nexa karena filter grup: "${matched}".`,
+            mentions: [sender]
+          })
+          return
+        }
+      } catch (error) {
+        logger.warn({ err: error }, 'keyword filter failed')
+      }
+    }
+
     const mentioned = extractMentions(message.message, text)
       .map(normalizeJid)
+      .map(target => store.canonicalUser(target))
       .find(target => store.data.users[target]?.afk)
 
     if (mentioned) {
