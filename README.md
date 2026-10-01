@@ -1,6 +1,6 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.1.1**  
+**Current version: 3.2.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
@@ -33,6 +33,9 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 - `start.sh` launcher for Linux/Termux
 - `.botid` for checking the connected bot identity
 - repaired group metadata cache helper
+- explicit QR fallback when `PAIRING_NUMBER` is empty
+- canonical PN/LID user identity for AI and chat statistics
+- safer `.warnings` self-target behavior
 - duplicate-message suppression and command throttling
 - deterministic core unit tests + GitHub Actions verification
 
@@ -59,7 +62,7 @@ OWNER_NUMBER=628xxxxxxxxxx
 PAIRING_NUMBER=628xxxxxxxxxx
 ```
 
-`PAIRING_NUMBER` is the **WhatsApp phone number of the account that will become Nexa**. `OWNER_NUMBER` is the phone number allowed to use owner-only commands. They can be the same account, but they represent different roles in the configuration.
+`PAIRING_NUMBER` is optional. When set, it is the **WhatsApp phone number of the account that will become Nexa** and Nexa uses pairing-code authentication. When empty, Nexa uses QR authentication instead. `OWNER_NUMBER` is the phone number allowed to use owner-only commands. They can be the same account, but they represent different roles in the configuration.
 
 ### Start with bot number + pairing code
 
@@ -79,9 +82,9 @@ On the first connection, Nexa prints a **pairing code** in the terminal. On the 
 
 After pairing succeeds, the session is stored under `AUTH_DIR`; subsequent starts reuse the saved credentials instead of requiring a fresh pairing each time. citeturn296093search3
 
-### Start with QR
+### Start with QR — no number in `.env`
 
-Leave `PAIRING_NUMBER` empty:
+You do **not** need to type the bot number into `.env` when using QR mode. Leave `PAIRING_NUMBER` empty:
 
 ```text
 PAIRING_NUMBER=
@@ -93,7 +96,9 @@ Then run:
 npm start
 ```
 
-Nexa will display a QR code in the terminal. Scan it from WhatsApp → Linked Devices.
+Nexa will display a QR code in the terminal. Scan it from WhatsApp → Linked Devices. The WhatsApp account that completes the link becomes the Nexa account.
+
+**Important:** empty `PAIRING_NUMBER` does not mean Nexa can run without a WhatsApp account or phone number. It only means the number is supplied implicitly by the account that scans the QR code.
 
 ### Put the bot into a group
 
