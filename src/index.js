@@ -135,7 +135,7 @@ async function start() {
     ) {
       pairingRequested = true
       try {
-        const code = await sock.requestPairingCode(config.pairingCode)
+        const code = await sock.requestPairingCode(config.pairingNumber)
         console.log(`Nexa pairing code: ${code}`)
       } catch (error) {
         pairingRequested = false
