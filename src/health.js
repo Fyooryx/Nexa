@@ -1,4 +1,5 @@
 import { formatDuration } from './utils.js'
+import { runtime } from './runtime.js'
 
 function mb(value) {
   return Math.round(value / 1024 / 1024)
@@ -11,7 +12,12 @@ export function healthSnapshot({ sock, store, config }) {
     bot: config.botName,
     version: config.botVersion,
     owner: config.ownerName,
-    connected: Boolean(sock?.user?.id),
+    connected: runtime.connection === 'open',
+    connection: runtime.connection,
+    connectedAt: runtime.connectedAt,
+    lastDisconnectedAt: runtime.lastDisconnectedAt,
+    lastDisconnectCode: runtime.lastDisconnectCode,
+    reconnects: runtime.reconnects,
     uptime: formatDuration(process.uptime()),
     node: process.version,
     memory: {
@@ -33,7 +39,7 @@ export function formatHealth(snapshot) {
     `*${snapshot.bot} health*`,
     `Version: ${snapshot.version}`,
     `Owner: ${snapshot.owner}`,
-    `Connection: ${snapshot.connected ? 'CONNECTED' : 'DISCONNECTED'}`,
+`Connection: ${snapshot.connection.toUpperCase()}`,
     `Uptime: ${snapshot.uptime}`,
     `Node: ${snapshot.node}`,
     `Memory: ${snapshot.memory.rssMb} MB RSS | ${snapshot.memory.heapUsedMb}/${snapshot.memory.heapTotalMb} MB heap`,
