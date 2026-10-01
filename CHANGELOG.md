@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.3.1 — Owner and bot identity configuration
+
+### Changed
+- configure the provided WhatsApp number as `OWNER_NUMBER`
+- configure the same number as `PAIRING_NUMBER` for pairing-code mode
+- Nexa version bumped to 3.3.1
+
+
 ## 3.3.0 — Diagnostics and cache maintenance
 
 ### Added
