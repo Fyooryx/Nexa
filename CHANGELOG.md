@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.4.0 — Deployment architecture
+
+### Added
+- production Dockerfile for the persistent Nexa worker
+- Docker build exclusions for `.env`, `auth_info/`, and `data/`
+- `docs/deployment.md` covering Vercel, Netlify, Supabase, Render, Railway, and VPS roles
+
+### Architecture
+- keep the live Baileys socket on a persistent Node.js worker
+- use Vercel/Netlify for optional HTTP control-plane components
+- use Supabase for persistent database/services around the worker
+- Nexa version bumped to 3.4.0
+
+
 ## 3.3.1 — Owner and bot identity configuration
 
 ### Changed
