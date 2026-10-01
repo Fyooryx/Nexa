@@ -1,6 +1,6 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 2.5.0**  
+**Current version: 2.6.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
@@ -20,7 +20,9 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 - join-request approval/rejection and member-add controls
 - group config inspection/reset
 - LID-aware group admin authorization
-- persistent JSON state normalization
+- persistent JSON state normalization with migration-safe filter/stat defaults
+- periodic state flushing for non-command message counters
+- bounded cleanup for long-running command cooldown state
 - duplicate-message suppression and command throttling
 - deterministic core unit tests + GitHub Actions verification
 
@@ -107,6 +109,7 @@ QR login remains the baseline path. Pairing-code behavior may change with upstre
 .setgoodbye Sampai jumpa @user!
 
 .filter on|off
+.filter mode delete|warn
 .filter add <keyword>
 .filter del <keyword>
 .filter list
@@ -185,6 +188,7 @@ Important settings:
 - `COMMAND_COOLDOWN_MS` / `MAX_COMMANDS_PER_WINDOW`: command throttling
 - `MAX_MESSAGE_LENGTH`: input safety limit
 - `WARN_LIMIT`: warning threshold
+- `STORE_FLUSH_MS`: periodic state flush interval (5s–120s)
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
