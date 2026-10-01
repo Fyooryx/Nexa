@@ -19,6 +19,7 @@ import {
 } from './utils.js'
 import { findCommand, handleGroupAutomation } from './commands.js'
 import { RateLimiter, MessageDeduper } from './limits.js'
+import { FloodGuard } from './flood.js'
 import { findMatchedKeyword } from './filters.js'
 import { isAdmin, isBotAdmin } from './metadata.js'
 import { runtime, markClosed, markConnecting, markOpen } from './runtime.js'
@@ -32,6 +33,7 @@ const commandLimiter = new RateLimiter({
   max: config.maxCommandsPerWindow
 })
 const seenMessages = new MessageDeduper()
+const floodGuard = new FloodGuard()
 const lastCommand = new Map()
 
 let stopping = false
@@ -232,6 +234,53 @@ async function handleIncoming(sock, message) {
 
   if (isGroupJid(jid)) {
     const group = store.group(jid)
+
+    if (!isCommand && group.antiflood) {
+      try {
+        const meta = await getGroupMetadata(sock, jid)
+        const senderIsAdmin = isAdmin(meta, sender, sock) || (senderAlt && isAdmin(meta, senderAlt, sock))
+        if (!senderIsAdmin) {
+          const result = floodGuard.hit(`${jid}:${userKey}`, {
+            windowMs: group.floodWindowMs,
+            max: group.floodMax
+          })
+
+          if (result.limited) {
+            if (group.floodMode === 'delete') {
+              if (isBotAdmin(sock, meta)) {
+                await sock.sendMessage(jid, { delete: message.key }).catch(() => {})
+              }
+              return
+            }
+
+            if (result.firstViolation) {
+              const count = store.addWarn(jid, userKey, 'anti-flood')
+              if (count >= config.warnLimit && isBotAdmin(sock, meta)) {
+                store.resetWarn(jid, userKey)
+                await store.persist()
+                await sock.sendMessage(jid, {
+                  text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) karena anti-flood dan diproses untuk dikeluarkan.`,
+                  mentions: [sender]
+                }).catch(() => {})
+                await sock.groupParticipantsUpdate(jid, [sender], 'remove').catch(() => {})
+              } else {
+                await store.persist()
+                await sock.sendMessage(jid, {
+                  text: `⚠️ @${numberFromJid(sender)} terdeteksi flood (${result.count} pesan/${Math.round(group.floodWindowMs / 1000)}s). Warning: ${count}/${config.warnLimit}.`,
+                  mentions: [sender]
+                }).catch(() => {})
+              }
+              return
+            }
+
+            return
+          }
+        }
+      } catch (error) {
+        logger.warn({ err: error }, 'anti-flood handler failed')
+      }
+    }
+
     if (group.filterEnabled && !isCommand) {
       try {
         const meta = await sock.groupMetadata(jid)
@@ -357,6 +406,7 @@ function pruneLastCommand(maxAgeMs = 60 * 60 * 1000, maxKeys = 10000) {
 
 setInterval(() => {
   commandLimiter.prune()
+  floodGuard.prune()
   pruneLastCommand()
   store.persist().catch(error => logger.warn({ err: error }, 'periodic store flush failed'))
 }, Math.max(config.storeFlushMs, 5000)).unref()
