@@ -37,6 +37,7 @@ const floodGuard = new FloodGuard()
 const lastCommand = new Map()
 const groupMetadataCache = new Map()
 const GROUP_METADATA_TTL_MS = 5 * 60 * 1000
+let activeAuthMode = 'unknown'
 
 function cacheGroupMetadata(meta) {
   if (!meta?.id) return
@@ -108,6 +109,7 @@ async function start() {
     : config.pairingNumber
       ? 'pairing-code'
       : 'qr'
+  activeAuthMode = authMode
 
   if (!state.creds.registered && !config.pairingNumber) {
     console.log('Nexa auth: QR mode — PAIRING_NUMBER kosong. Scan QR dengan akun WhatsApp yang akan menjadi Nexa.')
@@ -256,6 +258,7 @@ async function handleIncoming(sock, message) {
     prefix,
     senderAlt,
     userKey,
+    authMode: activeAuthMode,
     isOwner: ownerFromIdentity(sender, senderAlt),
     reply: (content, extra = {}) => sock.sendMessage(
       jid,
