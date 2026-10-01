@@ -70,6 +70,21 @@ function formatList(title, items) {
 }
 
 export const COMMANDS = [
+  command('authstatus', ['auth'], 'General', 'Tampilkan mode autentikasi Nexa saat ini.', async ctx => {
+    const identity = ctx.sock.user?.id || ''
+    const identityNumber = identity.includes('@s.whatsapp.net')
+      ? numberFromJid(identity)
+      : 'tersamarkan oleh JID/LID'
+    const modeLabel = {
+      'pairing-code': 'PAIRING CODE',
+      qr: 'QR',
+      'saved-session': 'SAVED SESSION'
+    }[ctx.authMode] || 'UNKNOWN'
+    return ctx.reply(
+      `🔐 Auth: ${modeLabel}\nConnected: ${ctx.sock.user ? 'yes' : 'no'}\nBot identity: ${identityNumber}`
+    )
+  }),
+
   command('botid', ['botnumber'], 'General', 'Tampilkan identitas akun WhatsApp Nexa yang sedang terhubung.', async ctx => {
     const id = ctx.sock.user?.id || ''
     const lid = ctx.sock.user?.lid || ''
