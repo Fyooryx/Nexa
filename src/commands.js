@@ -286,7 +286,7 @@ export const COMMANDS = [
     if (!prompt) return ctx.reply(`Tulis pertanyaan setelah ${ctx.prefix}ai`)
     if (prompt.length > 4000) return ctx.reply('Prompt terlalu panjang (maks. 4000 karakter).')
 
-    const user = ctx.store.user(ctx.sender)
+    const user = ctx.store.user(ctx.userKey)
     const history = Array.isArray(user.aiHistory) ? user.aiHistory : []
     const messages = [
       { role: 'system', content: `You are ${config.botName}, a concise WhatsApp bot. Reply in the user's language. Do not claim actions you cannot perform.` },
@@ -621,9 +621,10 @@ export const COMMANDS = [
     await requireGroup(ctx)
     const meta = await requireGroup(ctx)
     const target = await resolveTarget(ctx, meta)
+    const targetJid = target || ctx.sender
     const targetKey = target ? ctx.store.canonicalParticipant(meta, target) : ctx.userKey
     const count = ctx.store.warnCount(ctx.jid, targetKey)
-    return ctx.reply(`⚠️ @${numberFromJid(target)}: ${count}/${config.warnLimit} warning.`, { mentions: [target] })
+    return ctx.reply(`⚠️ @${numberFromJid(targetJid)}: ${count}/${config.warnLimit} warning.`, { mentions: [targetJid] })
   }),
 
   command('resetwarn', ['clearwarn'], 'Moderation', 'Reset warning target.', async ctx => {
@@ -850,7 +851,7 @@ export const COMMANDS = [
 
   command('chatstats', ['stats'], 'General', 'Lihat statistik chat saat ini.', async ctx => {
     const group = isGroupJid(ctx.jid) ? settings(ctx) : null
-    const user = ctx.store.user(ctx.sender)
+    const user = ctx.store.user(ctx.userKey)
     const lines = [
       `Messages total: ${ctx.store.data.meta.messages}`,
       `Commands total: ${ctx.store.data.meta.commands}`,
