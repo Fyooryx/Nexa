@@ -102,7 +102,7 @@ Nexa will display a QR code in the terminal. Scan it from WhatsApp → Linked De
 
 ### Put the bot into a group
 
-Once the WhatsApp account is linked, **the number stored in `PAIRING_NUMBER` is the bot's WhatsApp number**. Add that number to a group exactly like a normal WhatsApp contact/member.
+Once the WhatsApp account is linked, that **WhatsApp account becomes the Nexa bot account**. In pairing-code mode, its number is the value in `PAIRING_NUMBER`; in QR mode, the number is supplied by the account that scans the QR. Use `.botid` to inspect the connected identity before adding Nexa to a group.
 
 The practical order is:
 
