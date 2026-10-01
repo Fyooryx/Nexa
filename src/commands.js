@@ -437,6 +437,40 @@ export const COMMANDS = [
     return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|mode|add|del|list|clear`)
   }, { usage: 'filter on|off | mode delete|warn | add|del <keyword> | list|clear' }),
 
+  command('antiflood', ['flood'], 'Moderation', 'Atur proteksi flood per grup.', async ctx => {
+    await requireAdmin(ctx)
+    const group = settings(ctx)
+    const action = ctx.args.shift()?.toLowerCase()
+
+    if (action === 'on' || action === 'off') {
+      group.antiflood = action === 'on'
+      await ctx.store.persist()
+      return ctx.reply(`Anti-flood: ${group.antiflood ? 'ON' : 'OFF'}`)
+    }
+
+    if (action === 'status' || !action) {
+      return ctx.reply(
+        `Anti-flood: ${group.antiflood ? 'ON' : 'OFF'}\\nLimit: ${group.floodMax} pesan / ${Math.round(group.floodWindowMs / 1000)}s\\nMode: ${group.floodMode}`
+      )
+    }
+
+    if (action === 'config') {
+      const max = Number.parseInt(ctx.args[0], 10)
+      const seconds = Number.parseInt(ctx.args[1], 10)
+      const mode = ctx.args[2]?.toLowerCase()
+      if (!Number.isInteger(max) || max < 3 || max > 20 || !Number.isInteger(seconds) || seconds < 3 || seconds > 60 || !['delete', 'warn'].includes(mode)) {
+        return ctx.reply(`Pakai: ${ctx.prefix}antiflood config <3-20> <3-60s> delete|warn`)
+      }
+      group.floodMax = max
+      group.floodWindowMs = seconds * 1000
+      group.floodMode = mode
+      await ctx.store.persist()
+      return ctx.reply(`✅ Anti-flood disimpan: ${max} pesan / ${seconds}s / ${mode}`)
+    }
+
+    return ctx.reply(`Pakai: ${ctx.prefix}antiflood on|off|status|config <max> <seconds> delete|warn`)
+  }),
+
   command('antilink', [], 'Group', 'Aktif/nonaktifkan filter URL.', async ctx => {
     const mode = ctx.args[0]?.toLowerCase()
     if (!['on', 'off'].includes(mode)) return ctx.reply(`Pakai: ${ctx.prefix}antilink on|off`)
@@ -697,7 +731,7 @@ export const COMMANDS = [
     const meta = await requireGroup(ctx)
     const group = settings(ctx)
     return ctx.reply(
-      `*${meta.subject || 'Group'}*\\nPrefix: ${group.prefix || ctx.prefix}\\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\\nFilter: ${group.filterEnabled ? 'ON' : 'OFF'} (${group.filterMode})\\nFilters: ${group.filters.length || 'none'}\\nJoin approval: WhatsApp-managed\\nDisabled commands: ${group.disabledCommands.length || 'none'}`
+      `*${meta.subject || 'Group'}*\\nPrefix: ${group.prefix || ctx.prefix}\\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\\nAnti-flood: ${group.antiflood ? 'ON' : 'OFF'} (${group.floodMax}/${Math.round(group.floodWindowMs / 1000)}s, ${group.floodMode})\\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\\nFilter: ${group.filterEnabled ? 'ON' : 'OFF'} (${group.filterMode})\\nFilters: ${group.filters.length || 'none'}\\nJoin approval: WhatsApp-managed\\nDisabled commands: ${group.disabledCommands.length || 'none'}`
     )
   }),
 
@@ -711,6 +745,10 @@ export const COMMANDS = [
     group.welcomeText = '👋 Selamat datang @user di grup!'
     group.goodbyeText = '👋 @user keluar dari grup.'
     group.disabledCommands = []
+    group.antiflood = false
+    group.floodMax = 6
+    group.floodWindowMs = 5000
+    group.floodMode = 'delete'
     group.filters = []
     group.filterEnabled = false
     group.filterMode = 'delete'
