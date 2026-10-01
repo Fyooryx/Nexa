@@ -9,6 +9,7 @@
 - make `.warnings` safely resolve the current sender when no target is supplied
 
 ### Added
+- `authstatus` diagnostic command for QR/pairing/saved-session visibility
 - explicit startup messaging for QR mode when `PAIRING_NUMBER` is empty
 - secure `.env.example` default with no personal-looking owner number
 - canonical participant regression coverage
