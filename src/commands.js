@@ -70,6 +70,14 @@ function formatList(title, items) {
 }
 
 export const COMMANDS = [
+  command('botid', ['botnumber'], 'General', 'Tampilkan identitas akun WhatsApp Nexa yang sedang terhubung.', async ctx => {
+    const id = ctx.sock.user?.id || ''
+    const lid = ctx.sock.user?.lid || ''
+    const number = numberFromJid(id)
+    const phone = id.includes('@s.whatsapp.net') ? number : 'tidak tersedia dari JID aktif'
+    return ctx.reply(`🤖 Bot number: ${phone}\nBot JID: ${id || '-'}\nLID: ${lid || '-'}`)
+  }),
+
   command('menu', ['help', 'start'], 'General', 'Tampilkan semua fitur.', async ctx => {
     const groups = new Map()
     for (const item of COMMANDS) {
