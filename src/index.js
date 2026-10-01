@@ -35,6 +35,32 @@ const commandLimiter = new RateLimiter({
 const seenMessages = new MessageDeduper()
 const floodGuard = new FloodGuard()
 const lastCommand = new Map()
+const groupMetadataCache = new Map()
+const GROUP_METADATA_TTL_MS = 5 * 60 * 1000
+
+function cacheGroupMetadata(meta) {
+  if (!meta?.id) return
+  groupMetadataCache.set(meta.id, { meta, expiresAt: Date.now() + GROUP_METADATA_TTL_MS })
+}
+
+function cachedGroupMetadata(jid) {
+  const entry = groupMetadataCache.get(jid)
+  if (!entry || entry.expiresAt <= Date.now()) {
+    groupMetadataCache.delete(jid)
+    return null
+  }
+  return entry.meta
+}
+
+async function getGroupMetadata(sock, jid, { refresh = false } = {}) {
+  if (!refresh) {
+    const cached = cachedGroupMetadata(jid)
+    if (cached) return cached
+  }
+  const meta = await sock.groupMetadata(jid)
+  cacheGroupMetadata(meta)
+  return meta
+}
 
 let stopping = false
 let reconnectTimer = null
@@ -97,7 +123,7 @@ async function start() {
   sock.ev.on('connection.update', async update => {
     const { connection, lastDisconnect, qr } = update
 
-    if (qr && !state.creds.registered && !config.pairingCode) {
+    if (qr && !state.creds.registered && !config.pairingNumber) {
       qrcode.generate(qr, { small: true })
     }
 
@@ -134,6 +160,7 @@ async function start() {
   })
 
   sock.ev.on('group-participants.update', async ({ id, participants, action }) => {
+    cacheGroupMetadata(await sock.groupMetadata(id).catch(() => null))
     const group = store.group(id)
 
     if (action === 'add' && group.welcome) {
@@ -283,7 +310,7 @@ async function handleIncoming(sock, message) {
 
     if (group.filterEnabled && !isCommand) {
       try {
-        const meta = await sock.groupMetadata(jid)
+        const meta = await getGroupMetadata(sock, jid)
         if (!meta || !meta.participants) return
         const senderIsAdmin = isAdmin(meta, sender, sock) || (senderAlt && isAdmin(meta, senderAlt, sock))
         const matched = findMatchedKeyword(text, group)
