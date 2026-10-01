@@ -1,15 +1,21 @@
 # Changelog
 
-## 3.0.0 — Target resolution and unified user state
-
-### Fixed
-- restored the missing `resolveTarget(ctx, meta)` runtime helper used by moderation and profile-picture commands
-- moderation warning state now canonicalizes group participants to phone identity when available
-- AFK, profile, AI, and AI-reset self state use `ctx.userKey` consistently
+## 3.1.0 — Setup clarity and credential hygiene
 
 ### Added
-- `JsonStore.canonicalParticipant()` helper for PN/LID-aware target state
+- `PAIRING_NUMBER` as the explicit WhatsApp number used for pairing
+- `.botid` to inspect the connected bot identity
+- setup documentation for starting Nexa and adding the bot account to groups
+- restored group metadata cache helper used by anti-flood paths
+
+### Fixed
+- `PAIRING_CODE` terminology is no longer used as the primary configuration name
+- `src/flood.js` is included in the syntax-check script
+- `.env.example` no longer contains a credential value
+
+### Security
+- any previously exposed API credential in repository history should be revoked/rotated; sanitizing the current example file does not erase old Git history
 
 ### Verification
-- source files and tests were re-fetched after update commits
-- live WhatsApp end-to-end behavior remains unverified without an authenticated session
+- source/config/documentation files were re-fetched after updates
+- live WhatsApp pairing and group E2E remain unverified without an authenticated session
