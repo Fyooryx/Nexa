@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.3.0 — Diagnostics and cache maintenance
+
+### Added
+- `diagnose` / `diag` safe runtime and setup diagnostic command
+- auth mode and metadata-cache visibility in health output
+
+### Improved
+- expired group metadata cache entries are periodically pruned
+- Nexa version bumped to 3.3.0
+
+### Security
+- `.diagnose` reports only whether `PAIRING_NUMBER` is configured; it does not print the number
+
+
 ## 3.2.0 — QR fallback and identity hardening
 
 ### Fixed
