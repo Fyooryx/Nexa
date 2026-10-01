@@ -18,6 +18,17 @@ import {
   truncate
 } from './utils.js'
 
+function safeIdentity(jid) {
+  const value = normalizeJid(jid || '')
+  if (!value) return 'not connected'
+  if (value.endsWith('@s.whatsapp.net')) {
+    const number = numberFromJid(value)
+    return number.length > 6 ? `${number.slice(0, 4)}…${number.slice(-2)}` : 'phone identity'
+  }
+  if (value.endsWith('@lid')) return 'LID identity'
+  return 'non-phone identity'
+}
+
 function command(name, aliases, category, description, run, options = {}) {
   return { name, aliases, category, description, run, ...options }
 }
@@ -78,7 +89,7 @@ export const COMMANDS = [
       `Version: ${snapshot.version}`,
       `Connection: ${snapshot.connection}`,
       `Auth: ${snapshot.authMode}`,
-      `Bot identity: ${snapshot.connected ? (ctx.sock.user?.id || '-') : 'not connected'}`,
+      `Bot identity: ${snapshot.connected ? safeIdentity(ctx.sock.user?.id) : 'not connected'}`,
       `Pairing number: ${pairing}`,
       `Groups: ${snapshot.counters.groups}`,
       `Users: ${snapshot.counters.users}`,
