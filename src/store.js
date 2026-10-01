@@ -61,10 +61,16 @@ export class JsonStore {
   }
 
   user(jid) {
-    this.data.users[jid] ??= { afk: null }
+    this.data.users[jid] ??= { afk: null, messages: 0 }
     this.data.users[jid].warnings ??= {}
     this.data.users[jid].aiHistory ??= []
+    this.data.users[jid].messages = Number(this.data.users[jid].messages || 0)
     return this.data.users[jid]
+  }
+
+  canonicalUser(preferred, alternate = null) {
+    const values = [preferred, alternate].filter(Boolean)
+    return values.find(value => value.endsWith('@s.whatsapp.net')) || values[0] || ''
   }
 
   groupPrefix(jid, globalPrefix) {
@@ -101,8 +107,19 @@ export class JsonStore {
     delete this.group(jid).warns[target]
   }
 
-  bumpMessage(isCommand = false) {
+  bumpMessage({ jid = null, sender = null, isCommand = false } = {}) {
     this.data.meta.messages = Number(this.data.meta.messages || 0) + 1
     if (isCommand) this.data.meta.commands = Number(this.data.meta.commands || 0) + 1
+
+    if (sender) {
+      const user = this.user(sender)
+      user.messages += 1
+    }
+
+    if (jid?.endsWith('@g.us')) {
+      const group = this.group(jid)
+      group.stats.messages += 1
+      if (isCommand) group.stats.commands += 1
+    }
   }
 }
