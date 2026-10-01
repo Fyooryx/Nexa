@@ -12,6 +12,7 @@ import {
   getQuotedMessage,
   isGroupJid,
   isLikelyUrl,
+  normalizeJid,
   numberFromJid,
   targetFromContext,
   truncate
@@ -46,6 +47,14 @@ async function requireOwner(ctx) {
 
 function settings(ctx) {
   return ctx.store.group(ctx.jid)
+}
+
+async function resolveTarget(ctx, meta) {
+  const raw = targetFromContext(ctx.message.message, ctx.text)
+  if (!raw) return null
+  const target = normalizeJid(raw)
+  const participant = (meta?.participants || []).find(item => participantJids(item).includes(target))
+  return participant?.id || participant?.phoneNumber || participant?.lid || target
 }
 
 async function findMedia(ctx, type) {
@@ -185,14 +194,14 @@ export const COMMANDS = [
 
   command('afk', [], 'User', 'Set status AFK dengan alasan.', async ctx => {
     const reason = ctx.args.join(' ') || 'tidak ada alasan'
-    ctx.store.user(ctx.sender).afk = { since: Date.now(), reason: truncate(reason, 300) }
+    ctx.store.user(ctx.userKey).afk = { since: Date.now(), reason: truncate(reason, 300) }
     await ctx.store.persist()
     return ctx.reply(`💤 AFK aktif: ${reason}`)
   }, { usage: 'afk [reason]' }),
 
   command('profile', ['me'], 'User', 'Lihat profil runtime user.', async ctx => {
-    const user = ctx.store.user(ctx.sender)
-    const warningCount = isGroupJid(ctx.jid) ? ctx.store.warnCount(ctx.jid, ctx.sender) : 0
+    const user = ctx.store.user(ctx.userKey)
+    const warningCount = isGroupJid(ctx.jid) ? ctx.store.warnCount(ctx.jid, ctx.userKey) : 0
     return ctx.reply(
       `👤 ${ctx.sender}\nAFK: ${user.afk ? 'aktif' : 'tidak aktif'}\nWarnings (chat ini): ${warningCount}`
     )
@@ -303,7 +312,7 @@ export const COMMANDS = [
   }, { usage: 'ai <prompt>' }),
 
   command('aiclear', ['resetai'], 'AI', 'Hapus memory percakapan AI milikmu.', async ctx => {
-    ctx.store.user(ctx.sender).aiHistory = []
+    ctx.store.user(ctx.userKey).aiHistory = []
     await ctx.store.persist()
     return ctx.reply('🧹 Memory AI dihapus.')
   }),
@@ -568,16 +577,17 @@ export const COMMANDS = [
 
   command('warn', [], 'Moderation', 'Tambahkan peringatan ke member.', async ctx => {
     const meta = await requireAdmin(ctx)
-    const target = targetFromContext(ctx.message.message, ctx.text)
+    const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan member target.')
     if (isAdmin(meta, target, ctx.sock)) return ctx.reply('Target adalah admin.')
+    const userKey = ctx.store.canonicalParticipant(meta, target)
     const reason = ctx.args.filter(arg => !arg.startsWith('@')).join(' ') || 'tanpa alasan'
-    const count = ctx.store.addWarn(ctx.jid, target, truncate(reason, 300))
+    const count = ctx.store.addWarn(ctx.jid, userKey, truncate(reason, 300))
     await ctx.store.persist()
 
     if (count >= config.warnLimit) {
       await requireBotAdmin(ctx, meta)
-      ctx.store.resetWarn(ctx.jid, target)
+      ctx.store.resetWarn(ctx.jid, userKey)
       await ctx.store.persist()
       try {
         await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
@@ -601,16 +611,20 @@ export const COMMANDS = [
 
   command('warnings', ['warns'], 'Moderation', 'Lihat warning target.', async ctx => {
     await requireGroup(ctx)
-    const target = (await resolveTarget(ctx, await requireGroup(ctx))) || ctx.sender
-    const count = ctx.store.warnCount(ctx.jid, target)
+    const meta = await requireGroup(ctx)
+    const target = await resolveTarget(ctx, meta)
+    const targetKey = target ? ctx.store.canonicalParticipant(meta, target) : ctx.userKey
+    const count = ctx.store.warnCount(ctx.jid, targetKey)
     return ctx.reply(`⚠️ @${numberFromJid(target)}: ${count}/${config.warnLimit} warning.`, { mentions: [target] })
   }),
 
   command('resetwarn', ['clearwarn'], 'Moderation', 'Reset warning target.', async ctx => {
     await requireAdmin(ctx)
-    const target = await resolveTarget(ctx, await requireGroup(ctx))
+    const meta = await requireGroup(ctx)
+    const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply target.')
-    ctx.store.resetWarn(ctx.jid, target)
+    const targetKey = ctx.store.canonicalParticipant(meta, target)
+    ctx.store.resetWarn(ctx.jid, targetKey)
     await ctx.store.persist()
     return ctx.reply(`🧹 Warning @${numberFromJid(target)} direset.`, { mentions: [target] })
   }),
