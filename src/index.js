@@ -259,6 +259,7 @@ async function handleIncoming(sock, message) {
     senderAlt,
     userKey,
     authMode: activeAuthMode,
+    metadataCacheSize: groupMetadataCache.size,
     isOwner: ownerFromIdentity(sender, senderAlt),
     reply: (content, extra = {}) => sock.sendMessage(
       jid,
@@ -450,6 +451,9 @@ setInterval(() => {
   commandLimiter.prune()
   floodGuard.prune()
   pruneLastCommand()
+  for (const [jid, entry] of groupMetadataCache) {
+    if (entry.expiresAt <= Date.now()) groupMetadataCache.delete(jid)
+  }
   store.persist().catch(error => logger.warn({ err: error }, 'periodic store flush failed'))
 }, Math.max(config.storeFlushMs, 5000)).unref()
 
