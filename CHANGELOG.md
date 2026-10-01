@@ -1,20 +1,17 @@
 # Changelog
 
-## 2.6.0 — Runtime hardening and dynamic filter modes
+## 2.7.0 — Graceful shutdown and moderation escalation
 
 ### Added
-- `.filter mode delete|warn` for per-group keyword moderation behavior
-- migration-safe defaults for group filters and message statistics
-- periodic persistence for non-command message counters
-- bounded cleanup for long-running command cooldown state
+- final state flush during SIGINT/SIGTERM shutdown
+- filter-mode warning escalation when `WARN_LIMIT` is reached
+- safe shutdown de-duplication so repeated signals do not race multiple flushes
 
 ### Fixed
-- new or legacy group records no longer fail when message statistics are incremented
-- filter/admin checks consistently use Baileys PN/LID-aware identity matching
-- antilink admin detection now honors alternate sender identity
-- group reset now clears keyword-filter state completely
+- runtime no longer exits before attempting the final JSON persistence
+- keyword filter `warn` mode now follows the configured warning threshold
+- filter escalation uses the same PN/LID-aware identity checks
 
 ### Verification
-- unit coverage now asserts normalized group stats/filter defaults
-- source files were updated on the default branch
+- source files were re-fetched after update commits
 - live WhatsApp end-to-end behavior remains unverified without an authenticated session
