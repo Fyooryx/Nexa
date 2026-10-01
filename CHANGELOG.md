@@ -1,29 +1,20 @@
 # Changelog
 
-## 2.5.0 — AIO reliability and automation upgrade
+## 2.6.0 — Runtime hardening and dynamic filter modes
 
 ### Added
-- canonical PN/LID user identity handling
-- connection-aware runtime health state
-- keyword group automod: `.filter on|off|add|del|list`
-- group message/command statistics
-- group and bot profile-picture commands
-- owner block, unblock, and blocklist commands
-- native polls
-- group pin/unpin/delete tools
+- `.filter mode delete|warn` for per-group keyword moderation behavior
+- migration-safe defaults for group filters and message statistics
+- periodic persistence for non-command message counters
+- bounded cleanup for long-running command cooldown state
 
 ### Fixed
-- command message counters no longer double-count commands
-- alternate owner identity now bypasses throttling consistently
-- group admin authorization accepts alternate PN/LID identity
-- health no longer reports connection solely from `sock.user`
-- stale v2.4 documentation replaced with v2.5 feature set
-
-### Owner
-- Nexa owner display identity: Kyren
+- new or legacy group records no longer fail when message statistics are incremented
+- filter/admin checks consistently use Baileys PN/LID-aware identity matching
+- antilink admin detection now honors alternate sender identity
+- group reset now clears keyword-filter state completely
 
 ### Verification
-- core tests cover rate limiting, dedupe, persistent state, LID matching, command parsing, owner identity, health, keyword filters, and single-count statistics
-- repository files re-fetched after release commits
-- GitHub Actions workflow remains configured for dependency install, syntax check, and tests
-- live WhatsApp end-to-end verification was not available in this environment
+- unit coverage now asserts normalized group stats/filter defaults
+- source files were updated on the default branch
+- live WhatsApp end-to-end behavior remains unverified without an authenticated session
