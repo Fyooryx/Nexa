@@ -153,9 +153,10 @@ test('JsonStore counts a command once, not twice', async () => {
 
 import { readFile } from 'node:fs/promises'
 
-test('commands defines resolveTarget helper and self-state uses canonical userKey', async () => {
+test('commands exposes authstatus and canonical self-state uses userKey', async () => {
   const source = await readFile(new URL('../src/commands.js', import.meta.url), 'utf8')
   assert.match(source, /async function resolveTarget\(ctx, meta\)/)
+  assert.match(source, /command\('authstatus'/)
   assert.doesNotMatch(source, /ctx\.store\.user\(ctx\.sender\)\.afk/)
   assert.doesNotMatch(source, /const user = ctx\.store\.user\(ctx\.sender\)/)
 })
