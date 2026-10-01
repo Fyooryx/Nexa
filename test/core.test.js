@@ -38,6 +38,10 @@ test('JsonStore initializes and persists normalized group state', async () => {
     assert.equal(second.group('123@g.us').welcome, true)
     assert.equal(second.group('123@g.us').welcomeText, 'Welcome @user')
     assert.equal(second.warnCount('123@g.us', '456@s.whatsapp.net'), 1)
+    assert.deepEqual(second.group('123@g.us').stats, { messages: 0, commands: 0 })
+    assert.equal(second.group('123@g.us').filterEnabled, false)
+    assert.equal(second.group('123@g.us').filterMode, 'delete')
+    assert.deepEqual(second.group('123@g.us').filters, [])
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
