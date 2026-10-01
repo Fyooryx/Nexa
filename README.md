@@ -1,6 +1,6 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.1.0**  
+**Current version: 3.1.1**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
@@ -30,6 +30,7 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 - fixed missing target-resolution helper used by moderation/media commands
 - canonical PN/LID identity for AFK and AI self state
 - explicit `PAIRING_NUMBER` setup for the bot account
+- `start.sh` launcher for Linux/Termux
 - `.botid` for checking the connected bot identity
 - repaired group metadata cache helper
 - duplicate-message suppression and command throttling
