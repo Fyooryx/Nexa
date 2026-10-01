@@ -91,7 +91,8 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '2.5.0', ownerName: 'Kyren' }
+    config: { botName: 'Nexa', botVersion: '2.5.0', ownerName: 'Kyren' },
+    runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
   assert.equal(snapshot.owner, 'Kyren')
   assert.equal(snapshot.connected, true)
@@ -108,4 +109,20 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), 'scam')
   assert.equal(removeKeyword(group, 'SCAM'), true)
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), null)
+})
+
+test('JsonStore counts a command once, not twice', async () => {
+  const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-counter-')))
+  try {
+    const store = new JsonStore(dir)
+    await store.init()
+    store.bumpMessage({ jid: '123@g.us', sender: '456@s.whatsapp.net', isCommand: true })
+    assert.equal(store.data.meta.messages, 1)
+    assert.equal(store.data.meta.commands, 1)
+    assert.equal(store.group('123@g.us').stats.messages, 1)
+    assert.equal(store.group('123@g.us').stats.commands, 1)
+    assert.equal(store.user('456@s.whatsapp.net').messages, 1)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })
