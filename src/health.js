@@ -5,19 +5,19 @@ function mb(value) {
   return Math.round(value / 1024 / 1024)
 }
 
-export function healthSnapshot({ sock, store, config }) {
+export function healthSnapshot({ sock, store, config, runtimeState = runtime }) {
   const memory = process.memoryUsage()
 
   return {
     bot: config.botName,
     version: config.botVersion,
     owner: config.ownerName,
-    connected: runtime.connection === 'open',
-    connection: runtime.connection,
-    connectedAt: runtime.connectedAt,
-    lastDisconnectedAt: runtime.lastDisconnectedAt,
-    lastDisconnectCode: runtime.lastDisconnectCode,
-    reconnects: runtime.reconnects,
+    connected: runtimeState.connection === 'open',
+    connection: runtimeState.connection,
+    connectedAt: runtimeState.connectedAt,
+    lastDisconnectedAt: runtimeState.lastDisconnectedAt,
+    lastDisconnectCode: runtimeState.lastDisconnectCode,
+    reconnects: runtimeState.reconnects,
     uptime: formatDuration(process.uptime()),
     node: process.version,
     memory: {
