@@ -391,6 +391,16 @@ export const COMMANDS = [
       return ctx.reply(`Keyword filter: ${group.filterEnabled ? 'ON' : 'OFF'}`)
     }
 
+    if (action === 'mode') {
+      const mode = ctx.args.shift()?.toLowerCase()
+      if (!['delete', 'warn'].includes(mode)) {
+        return ctx.reply(`Pakai: ${ctx.prefix}filter mode delete|warn`)
+      }
+      group.filterMode = mode
+      await ctx.store.persist()
+      return ctx.reply(`Keyword filter mode: ${mode}`)
+    }
+
     if (action === 'add') {
       const keyword = ctx.args.join(' ').trim()
       if (!keyword) return ctx.reply(`Pakai: ${ctx.prefix}filter add <keyword>`)
@@ -413,7 +423,7 @@ export const COMMANDS = [
       return ctx.reply(list.length ? formatList('Keyword filters', list) : 'Belum ada keyword filter.')
     }
 
-    return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|add|del|list`)
+    return ctx.reply(`Pakai: ${ctx.prefix}filter on|off|mode|add|del|list`)
   }, { usage: 'filter on|off | add|del <keyword> | list' }),
 
   command('antilink', [], 'Group', 'Aktif/nonaktifkan filter URL.', async ctx => {
@@ -690,6 +700,9 @@ export const COMMANDS = [
     group.welcomeText = '👋 Selamat datang @user di grup!'
     group.goodbyeText = '👋 @user keluar dari grup.'
     group.disabledCommands = []
+    group.filters = []
+    group.filterEnabled = false
+    group.filterMode = 'delete'
     group.warns = {}
     await ctx.store.persist()
     return ctx.reply('🧹 Konfigurasi Nexa untuk grup sudah direset.')
