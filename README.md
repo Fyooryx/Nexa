@@ -124,12 +124,15 @@ Use this command after the bot is connected to inspect its active identity:
 
 `PAIRING_CODE` is still accepted as a legacy environment-variable fallback for existing deployments, but new deployments should use `PAIRING_NUMBER`.
 
+Use `.authstatus` after connection to inspect whether Nexa is using QR, pairing code, or a saved session.
+
 ## Commands
 
 ### General
 
 ```text
 .botid
+.authstatus
 .menu
 .help ping
 .ping
