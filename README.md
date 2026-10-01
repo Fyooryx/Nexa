@@ -1,11 +1,11 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.3.1**  
+**Current version: 3.4.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.3.1 upgrade
+## 3.4.0 upgrade
 
 - canonical PN/LID identity key for users, cooldowns, and stats
 - real connection-aware health state
@@ -126,6 +126,61 @@ Use this command after the bot is connected to inspect its active identity:
 
 Use `.authstatus` after connection to inspect whether Nexa is using QR, pairing code, or a saved session. Use `.diagnose` for a broader runtime/setup snapshot; it does not print the configured phone number.
 
+## Deployment architecture
+
+Nexa's WhatsApp connection is a **long-lived Node.js worker**. Deploy the worker on a persistent service/container, and use serverless platforms for supporting HTTP/control-plane components.
+
+| Platform | Nexa worker | Recommended role |
+| --- | --- | --- |
+| Vercel | Not as the always-on WhatsApp worker | dashboard, API, webhooks, control plane |
+| Netlify | Not as the always-on WhatsApp worker | dashboard, API, webhooks |
+| Supabase | Not as the always-on Baileys process | Postgres state, Auth, Storage, Edge Functions |
+| Render | Yes, as a background worker/container | recommended worker host |
+| Railway | Yes, as a persistent service/container | recommended worker host |
+| VPS/Docker host | Yes | maximum runtime control |
+
+Vercel Functions can run long requests and now support WebSockets, but they still have bounded execution durations; Vercel documents up to 30 minutes for eligible Node.js/Python Functions on Pro/Enterprise with the extended setting. That is not equivalent to an indefinitely running WhatsApp session. Netlify Background Functions run up to 15 minutes. Supabase Edge Functions have bounded wall-clock limits and Supabase explicitly recommends moving heavy/long-running work to background workers. citeturn487406search6turn487406search12turn487406search1turn487406search0turn487406search14
+
+### Recommended topology
+
+```text
+                         ┌──────────────────────┐
+                         │ Vercel / Netlify     │
+                         │ Dashboard / API      │
+                         └──────────┬───────────┘
+                                    │ HTTPS
+                                    ▼
+┌──────────────────┐        ┌──────────────────────┐
+│ WhatsApp user    │◀──────▶│ Nexa persistent     │
+│ / group          │        │ Node.js worker       │
+└──────────────────┘        │ Baileys + auth_info │
+                            └──────────┬───────────┘
+                                       │
+                              ┌────────▼────────┐
+                              │ Supabase         │
+                              │ Postgres / state │
+                              └─────────────────┘
+```
+
+For the current Nexa release, the worker still uses local JSON state. A persistent disk is therefore required if the worker is restarted and you expect `auth_info/` and `data/` to survive. The Docker image intentionally excludes both from the build context.
+
+### Docker
+
+Build and run Nexa as a persistent container:
+
+```bash
+docker build -t nexa .
+docker run --rm -it \
+  --env-file .env \
+  -v nexa-data:/app/auth_info \
+  -v nexa-state:/app/data \
+  nexa
+```
+
+For a hosted worker, set `AUTH_DIR` and `DATA_DIR` to the mounted persistent paths supplied by the platform.
+
+See `docs/deployment.md` for platform-specific guidance.
+ 
 ## Commands
 
 ### General
