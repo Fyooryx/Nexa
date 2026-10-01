@@ -686,7 +686,7 @@ export const COMMANDS = [
     const meta = await requireGroup(ctx)
     const group = settings(ctx)
     return ctx.reply(
-      `*${meta.subject || 'Group'}*\\nPrefix: ${group.prefix || ctx.prefix}\\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\\nJoin approval: WhatsApp-managed\\nDisabled commands: ${group.disabledCommands.length || 'none'}`
+      `*${meta.subject || 'Group'}*\\nPrefix: ${group.prefix || ctx.prefix}\\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\\nFilter: ${group.filterEnabled ? 'ON' : 'OFF'} (${group.filterMode})\\nFilters: ${group.filters.length || 'none'}\\nJoin approval: WhatsApp-managed\\nDisabled commands: ${group.disabledCommands.length || 'none'}`
     )
   }),
 
@@ -893,7 +893,7 @@ export async function handleGroupAutomation(ctx) {
 
   try {
     const meta = await ctx.sock.groupMetadata(ctx.jid)
-    if (isAdmin(meta, ctx.sender)) return false
+    if (isAdmin(meta, ctx.sender, ctx.sock) || (ctx.senderAlt && isAdmin(meta, ctx.senderAlt, ctx.sock))) return false
     if (!isBotAdmin(ctx.sock, meta)) return false
 
     await ctx.sock.sendMessage(ctx.jid, { delete: ctx.message.key })
