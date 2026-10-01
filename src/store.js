@@ -25,10 +25,7 @@ function normalizeGroup(value) {
     floodMax: Math.min(20, Math.max(3, Number(value?.floodMax || 6))),
     floodWindowMs: Math.min(60000, Math.max(3000, Number(value?.floodWindowMs || 5000))),
     floodMode: value?.floodMode === 'warn' ? 'warn' : 'delete',
-    antiflood: Boolean(value?.antiflood),
-    floodMax: Math.min(20, Math.max(3, Number(value?.floodMax || 6))),
-    floodWindowMs: Math.min(60000, Math.max(3000, Number(value?.floodWindowMs || 5000))),
-    floodMode: value?.floodMode === 'warn' ? 'warn' : 'delete',
+
     warns: value?.warns && typeof value.warns === 'object' ? value.warns : {},
     stats: {
       messages: Number(value?.stats?.messages || 0),
