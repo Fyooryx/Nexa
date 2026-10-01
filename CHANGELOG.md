@@ -1,18 +1,15 @@
 # Changelog
 
-## 2.9.0 — Anti-flood and metadata caching
-
-### Added
-- `.antiflood on|off|status|config`
-- configurable per-group flood threshold, window, and delete/warn mode
-- bounded flood guard with periodic pruning
-- short-lived group metadata cache wired into the Baileys socket
+## 3.0.0 — Target resolution and unified user state
 
 ### Fixed
-- group participant updates refresh cached metadata after membership changes
-- anti-flood exemptions use PN/LID-aware admin identity checks
-- warning-mode flood escalation only emits one warning per flood-window violation
+- restored the missing `resolveTarget(ctx, meta)` runtime helper used by moderation and profile-picture commands
+- moderation warning state now canonicalizes group participants to phone identity when available
+- AFK, profile, AI, and AI-reset self state use `ctx.userKey` consistently
+
+### Added
+- `JsonStore.canonicalParticipant()` helper for PN/LID-aware target state
 
 ### Verification
-- source and test files were re-fetched after updates
+- source files and tests were re-fetched after update commits
 - live WhatsApp end-to-end behavior remains unverified without an authenticated session
