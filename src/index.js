@@ -197,14 +197,10 @@ async function handleIncoming(sock, message) {
   if (!text) return
   if (text.length > config.maxMessageLength) return
 
-  store.bumpMessage({ jid, sender: userKey, isCommand: false })
-
   const prefix = currentPrefix(jid)
   const parsed = parseCommand(text, prefix)
   const isCommand = Boolean(parsed)
-  if (isCommand) {
-    store.bumpMessage({ jid, sender: userKey, isCommand: true })
-  }
+  store.bumpMessage({ jid, sender: userKey, isCommand })
 
   const ctxBase = {
     sock,
@@ -217,6 +213,7 @@ async function handleIncoming(sock, message) {
     logger,
     prefix,
     senderAlt,
+    userKey,
     isOwner: ownerFromIdentity(sender, senderAlt),
     reply: (content, extra = {}) => sock.sendMessage(
       jid,
@@ -289,14 +286,15 @@ async function handleIncoming(sock, message) {
   }
 
   const now = Date.now()
-  const last = lastCommand.get(sender) || 0
+  const limitKey = userKey || sender
+  const last = lastCommand.get(limitKey) || 0
   if (now - last < config.commandCooldownMs && !ownerFromIdentity(sender, senderAlt)) {
     return
   }
-  if (!commandLimiter.allow(sender) && !ownerFromIdentity(sender, senderAlt)) {
+  if (!commandLimiter.allow(limitKey) && !ownerFromIdentity(sender, senderAlt)) {
     return ctxBase.reply('⏳ Terlalu banyak command. Coba lagi sebentar.')
   }
-  lastCommand.set(sender, now)
+  lastCommand.set(limitKey, now)
 
   const ctx = { ...ctxBase, args }
 
