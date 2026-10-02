@@ -4,6 +4,7 @@ import { RateLimiter, MessageDeduper } from '../src/limits.js'
 import { FloodGuard } from '../src/flood.js'
 import { JsonStore } from '../src/store.js'
 import { createHealthServer } from '../src/http.js'
+import { RuntimeTelemetry } from '../src/telemetry.js'
 import { rm, readFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -97,7 +98,7 @@ import { config } from '../src/config.js'
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.5.0')
+  assert.equal(config.botVersion, '3.6.0')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -109,7 +110,7 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '3.5.0', ownerName: 'Kyren' },
+    config: { botName: 'Nexa', botVersion: '3.6.0', ownerName: 'Kyren' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
   assert.equal(snapshot.owner, 'Kyren')
@@ -118,8 +119,25 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   assert.match(formatHealth(snapshot), /Owner: Kyren/)
 })
 
+test('RuntimeTelemetry produces bounded process metrics', () => {
+  const telemetry = new RuntimeTelemetry({ resolutionMs: 10 }).start()
+  try {
+    const snapshot = telemetry.snapshot()
+    assert.equal(typeof snapshot.uptimeSeconds, 'number')
+    assert.equal(typeof snapshot.rssMb, 'number')
+    assert.equal(typeof snapshot.eventLoopP95Ms, 'number')
+
+    const metrics = telemetry.prometheus(snapshot, { service: 'nexa-test', connection: 'open' })
+    assert.match(metrics, /nexa_up 1/)
+    assert.match(metrics, /nexa_event_loop_p95_ms/)
+    assert.match(metrics, /nexa_connection_state.*state="open".* 1/)
+  } finally {
+    telemetry.stop()
+  }
+})
+
 test('health server exposes liveness and connection readiness', async () => {
-  const state = { connection: 'connecting', uptime: '1s', version: '3.5.0' }
+  const state = { connection: 'connecting', uptime: '1s', version: '3.6.0' }
   const health = createHealthServer({
     host: '127.0.0.1',
     port: 0,
