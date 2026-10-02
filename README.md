@@ -1,11 +1,17 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.5.0**  
+**Current version: 3.6.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.5.0 upgrade
+## 3.6.0 upgrade
+
+- runtime telemetry based on Node.js event-loop delay monitoring
+- Prometheus-compatible `/metrics` endpoint
+- hardened health HTTP server with GET/HEAD handling and explicit error contracts
+- process metrics for uptime, memory, and event-loop latency
+- health service lifecycle shutdown hooks
 
 - lightweight HTTP liveness endpoint at `/healthz`
 - connection-aware readiness endpoint at `/readyz`
@@ -185,7 +191,7 @@ docker run --rm -it \
 
 For a hosted worker, mount one persistent directory and set `AUTH_DIR` and `DATA_DIR` to subdirectories inside it. The included Dockerfile uses `/app/runtime/auth_info` and `/app/runtime/data` by default.
 
-The runtime HTTP probe is described in `docs/deployment.md`. Use `/healthz` for process liveness and `/readyz` when a platform should require an open WhatsApp connection.
+The runtime HTTP probe is described in `docs/deployment.md`. Use `/healthz` for process liveness, `/readyz` when a platform should require an open WhatsApp connection, and `/metrics` for Prometheus scraping.
 
 See `docs/deployment.md` for platform-specific guidance.
  
@@ -337,6 +343,8 @@ Important settings:
 - `WARN_LIMIT`: warning threshold
 - `STORE_FLUSH_MS`: periodic state flush interval (5s–120s)
 - `HEALTH_HOST` / `HEALTH_PORT`: runtime health server binding
+- `PORT`: hosted-platform override for the health server port
+- `/metrics`: Prometheus-compatible runtime telemetry
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
@@ -371,6 +379,7 @@ src/
 ├── metadata.js
 ├── runtime.js
 ├── server.js
+├── telemetry.js
 ├── store.js
 └── utils.js
 test/
