@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
 import { CommandRegistry } from './registry.js'
+import { CircuitBreaker, CircuitOpenError, fetchWithRetry } from './resilience.js'
 import { formatHealth, healthSnapshot } from './health.js'
 import { addKeyword, findMatchedKeyword, listKeywords, removeKeyword } from './filters.js'
 import { adminParticipants, adminSet, isAdmin, isBotAdmin, participantJids } from './metadata.js'
@@ -80,6 +81,11 @@ async function findMedia(ctx, type) {
 function formatList(title, items) {
   return [`*${title}*`, ...items.map(item => `• ${item}`)].join('\n')
 }
+
+const aiCircuit = new CircuitBreaker({
+  failureThreshold: config.ai.circuitFailureThreshold,
+  resetTimeoutMs: config.ai.circuitResetMs
+})
 
 export const COMMANDS = [
   command('diagnose', ['diag'], 'General', 'Ringkasan diagnostik aman untuk setup dan troubleshooting.', async ctx => {
@@ -342,21 +348,36 @@ export const COMMANDS = [
       { role: 'user', content: prompt }
     ]
 
-    const response = await fetch(`${config.ai.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${config.ai.key}`,
-        'content-type': 'application/json'
-      },
-      signal: AbortSignal.timeout(config.ai.timeoutMs),
-      body: JSON.stringify({
-        model: config.ai.model,
-        messages,
-        temperature: 0.7
-      })
-    })
+    let response
+    try {
+      response = await aiCircuit.execute(() => fetchWithRetry(
+        `${config.ai.baseUrl}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${config.ai.key}`,
+            'content-type': 'application/json'
+          },
+          signal: AbortSignal.timeout(config.ai.timeoutMs),
+          body: JSON.stringify({
+            model: config.ai.model,
+            messages,
+            temperature: 0.7
+          })
+        },
+        {
+          retries: config.ai.maxRetries,
+          baseDelayMs: config.ai.retryBaseMs
+        }
+      ))
+      if (!response.ok) throw new Error(`AI_HTTP_${response.status}`)
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        return ctx.reply('🛑 Modul AI sedang cooldown karena provider gagal berulang. Coba lagi sebentar.')
+      }
+      throw error
+    }
 
-    if (!response.ok) throw new Error(`AI_HTTP_${response.status}`)
     const payload = await response.json()
     const answer = payload?.choices?.[0]?.message?.content?.trim()
     if (!answer) throw new Error('AI_EMPTY_RESPONSE')
@@ -366,6 +387,22 @@ export const COMMANDS = [
     await ctx.store.persist()
     return ctx.reply(truncate(answer, 6000))
   }, { usage: 'ai <prompt>' }),
+
+  command('aistatus', ['aicircuit'], 'AI', 'Lihat status dependency AI tanpa membuka API key.', async ctx => {
+    const status = aiCircuit.status
+    const stateLabel = status.state === 'closed'
+      ? 'CLOSED'
+      : status.state === 'half-open'
+        ? 'HALF-OPEN'
+        : 'OPEN / COOLDOWN'
+    return ctx.reply([
+      `🤖 AI: ${config.ai.key ? 'configured' : 'not configured'}`,
+      `Model: ${config.ai.model}`,
+      `Circuit: ${stateLabel}`,
+      `Failures: ${status.failures}/${config.ai.circuitFailureThreshold}`,
+      `Retries: ${config.ai.maxRetries}`
+    ].join('\\n'))
+  }),
 
   command('aiclear', ['resetai'], 'AI', 'Hapus memory percakapan AI milikmu.', async ctx => {
     ctx.store.user(ctx.userKey).aiHistory = []
