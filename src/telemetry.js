@@ -77,9 +77,12 @@ export class RuntimeTelemetry {
       '# HELP nexa_event_loop_p95_ms Event loop delay p95 in milliseconds.',
       '# TYPE nexa_event_loop_p95_ms gauge',
       `nexa_event_loop_p95_ms{${label('service', service)}} ${snapshot.eventLoopP95Ms}`,
-      '# HELP nexa_connection_state Current WhatsApp connection state.',
-      '# TYPE nexa_connection_state gauge',
-      `nexa_connection_state{${label('service', service)},${label('state', connection)}} ${connection === 'open' ? 1 : 0}`
+      '# HELP nexa_event_loop_max_ms Maximum observed event loop delay in milliseconds.',
+      '# TYPE nexa_event_loop_max_ms gauge',
+      `nexa_event_loop_max_ms{${label('service', service)}} ${snapshot.eventLoopMaxMs}`,
+      '# HELP nexa_ready WhatsApp readiness indicator.',
+      '# TYPE nexa_ready gauge',
+      `nexa_ready{${label('service', service)}} ${connection === 'open' ? 1 : 0}`
     ]
 
     return lines.join('\n') + '\n'
