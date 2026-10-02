@@ -101,7 +101,8 @@ export async function fetchWithRetry(
 
       const retryAfter = parseRetryAfter(response.headers?.get?.('retry-after'))
       const exponential = Math.min(max, base * (2 ** attempt))
-      await sleep(Math.max(retryAfter ?? 0, exponential))
+      const delay = Math.min(max, Math.max(retryAfter ?? 0, exponential))
+      await sleep(delay)
     } catch (error) {
       if (options.signal?.aborted) throw error
       if (attempt >= attempts) throw error
