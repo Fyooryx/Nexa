@@ -1,6 +1,6 @@
 # Nexa deployment architecture
 
-Nexa has two workloads: a long-lived WhatsApp worker and optional request-oriented control-plane components.
+Nexa has two workloads: a long-lived WhatsApp worker and a small request-oriented health/control surface.
 
 ## Platform fit
 
@@ -13,16 +13,28 @@ Nexa has two workloads: a long-lived WhatsApp worker and optional request-orient
 | Railway | Yes | persistent service / Docker worker |
 | VPS | Yes | full runtime control |
 
-Vercel supports WebSockets and long-running Functions, but Function execution remains bounded. Netlify Background Functions are also bounded. Supabase Edge Functions have wall-clock and CPU limits. The Nexa Baileys session should therefore live on a persistent worker.
+The Baileys session remains a long-lived worker. The HTTP surface added in 3.5.0 is only for process liveness/readiness and does not replace the WhatsApp socket.
 
 ## Current Nexa storage model
 
 - AUTH_DIR stores Baileys authentication state.
 - DATA_DIR stores Nexa JSON state.
-- For Railway, both paths are placed under `/app/runtime` so a single service volume can persist both.
+- For Railway, both paths are placed under /app/runtime so a single service volume can persist both.
 - Both locations must survive process/container restarts.
 
 Do not bake auth_info/, data/, or .env into the container image.
+
+## Runtime health endpoints
+
+The default launcher is now node src/server.js. It starts the Nexa worker and a small HTTP server.
+
+- GET /healthz → 200 while the process is alive.
+- GET /readyz → 200 only when the WhatsApp runtime state is open; otherwise 503.
+- GET / → minimal service/version/connection JSON.
+
+HEALTH_HOST defaults to 0.0.0.0. HEALTH_PORT defaults to 3000, while an injected PORT takes precedence for hosted platforms.
+
+These endpoints intentionally expose no configured owner number, auth credentials, message contents, group lists, or stored user data.
 
 ## Docker
 
@@ -38,11 +50,13 @@ QR mode uses an empty PAIRING_NUMBER. Pairing-code mode uses the bot account num
 
 ## Render
 
-Use a Background Worker or Docker-based worker. Attach one persistent volume covering `/app/runtime` (which contains `auth_info/` and `data/`). Keep one active worker while Nexa uses file-based state; multiple replicas writing the same JSON state are not a safe topology.
+Use a Background Worker or Docker-based worker. Attach one persistent volume covering /app/runtime (which contains auth_info/ and data/). Keep one active worker while Nexa uses file-based state; multiple replicas writing the same JSON state are not a safe topology.
 
 ## Railway
 
 Use a persistent Service, optionally built from the Dockerfile. Keep one active worker while Nexa uses file-based state and attach persistent storage for auth_info/ and data/.
+
+For health checks, point the service at /healthz for process liveness. Use /readyz only when the platform should distinguish a live process from a connected WhatsApp session.
 
 ## Vercel
 
