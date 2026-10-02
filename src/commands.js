@@ -102,17 +102,18 @@ export const COMMANDS = [
   }),
 
   command('authstatus', ['auth'], 'General', 'Tampilkan mode autentikasi Nexa saat ini.', async ctx => {
-    const identity = ctx.sock.user?.id || ''
-    const identityNumber = identity.includes('@s.whatsapp.net')
-      ? numberFromJid(identity)
-      : 'tersamarkan oleh JID/LID'
     const modeLabel = {
       'pairing-code': 'PAIRING CODE',
       qr: 'QR',
       'saved-session': 'SAVED SESSION'
     }[ctx.authMode] || 'UNKNOWN'
+    const identity = ctx.sock.user?.id || ''
     return ctx.reply(
-      `🔐 Auth: ${modeLabel}\nConnected: ${ctx.sock.user ? 'yes' : 'no'}\nBot identity: ${identityNumber}`
+      [
+        `🔐 Auth: ${modeLabel}`,
+        `Connected: ${ctx.sock.user ? 'yes' : 'no'}`,
+        `Bot identity: ${safeIdentity(identity)}`
+      ].join('\\n')
     )
   }),
 
