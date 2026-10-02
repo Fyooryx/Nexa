@@ -162,7 +162,7 @@ Vercel Functions can run long requests and now support WebSockets, but they stil
                               └─────────────────┘
 ```
 
-For the current Nexa release, the worker still uses local JSON state. A persistent disk is therefore required if the worker is restarted and you expect `auth_info/` and `data/` to survive. The Docker image intentionally excludes both from the build context.
+For the current Nexa release, the worker still uses local JSON state. A persistent disk is therefore required if the worker is restarted and you expect `auth_info/` and `data/` to survive. The Docker image intentionally excludes both runtime directories and `.env` from the build context.
 
 ### Docker
 
@@ -172,12 +172,11 @@ Build and run Nexa as a persistent container:
 docker build -t nexa .
 docker run --rm -it \
   --env-file .env \
-  -v nexa-data:/app/auth_info \
-  -v nexa-state:/app/data \
+  -v nexa-runtime:/app/runtime \
   nexa
 ```
 
-For a hosted worker, set `AUTH_DIR` and `DATA_DIR` to the mounted persistent paths supplied by the platform.
+For a hosted worker, mount one persistent directory and set `AUTH_DIR` and `DATA_DIR` to subdirectories inside it. The included Dockerfile uses `/app/runtime/auth_info` and `/app/runtime/data` by default.
 
 See `docs/deployment.md` for platform-specific guidance.
  
