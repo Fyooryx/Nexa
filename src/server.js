@@ -9,6 +9,7 @@ const healthServer = createHealthServer({
   host: config.healthHost,
   port: config.healthPort,
   logger: console,
+  metricsToken: config.metricsToken,
   getSnapshot: () => ({
     connection: runtime.connection,
     uptime: String(Math.floor(process.uptime())) + 's',
@@ -19,15 +20,6 @@ const healthServer = createHealthServer({
     { service: config.botName, connection: runtime.connection }
   )
 })
-
-const shutdown = async signal => {
-  telemetry.stop()
-  await healthServer.close().catch(() => {})
-  console.log('Nexa health server stopped', signal)
-}
-
-process.once('SIGINT', () => { void shutdown('SIGINT') })
-process.once('SIGTERM', () => { void shutdown('SIGTERM') })
 
 const address = await healthServer.start()
 console.log('Nexa health server listening', address)
