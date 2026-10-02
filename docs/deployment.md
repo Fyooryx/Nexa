@@ -19,6 +19,7 @@ Vercel supports WebSockets and long-running Functions, but Function execution re
 
 - AUTH_DIR stores Baileys authentication state.
 - DATA_DIR stores Nexa JSON state.
+- For Railway, both paths are placed under `/app/runtime` so a single service volume can persist both.
 - Both locations must survive process/container restarts.
 
 Do not bake auth_info/, data/, or .env into the container image.
@@ -31,7 +32,7 @@ Build:
 
 Run:
 
-    docker run --rm -it --env-file .env -v nexa-auth:/app/auth_info -v nexa-data:/app/data nexa
+    docker run --rm -it --env-file .env -v nexa-runtime:/app/runtime nexa
 
 QR mode uses an empty PAIRING_NUMBER. Pairing-code mode uses the bot account number in PAIRING_NUMBER.
 
