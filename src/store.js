@@ -60,12 +60,14 @@ export class JsonStore {
   }
 
   async persist() {
-    const payload = JSON.stringify(this.data, null, 2)
-    this.writeChain = this.writeChain.then(async () => {
-      const temp = `${this.file}.tmp`
-      await fs.writeFile(temp, payload, 'utf8')
-      await fs.rename(temp, this.file)
-    })
+    this.writeChain = this.writeChain
+      .catch(() => {})
+      .then(async () => {
+        const payload = JSON.stringify(this.data, null, 2)
+        const temp = this.file + '.tmp'
+        await fs.writeFile(temp, payload, 'utf8')
+        await fs.rename(temp, this.file)
+      })
     return this.writeChain
   }
 
