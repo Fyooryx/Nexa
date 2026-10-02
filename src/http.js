@@ -10,8 +10,18 @@ function writeJson(res, statusCode, payload) {
   res.end(body)
 }
 
+function writeText(res, statusCode, body, contentType = 'text/plain; version=0.0.4') {
+  res.writeHead(statusCode, {
+    'content-type': contentType + '; charset=utf-8',
+    'cache-control': 'no-store',
+    'content-length': Buffer.byteLength(body)
+  })
+  res.end(body)
+}
+
 export function createHealthServer({
   getSnapshot,
+  getMetrics = null,
   host = '0.0.0.0',
   port = 3000,
   logger = console
@@ -19,12 +29,16 @@ export function createHealthServer({
   if (typeof getSnapshot !== 'function') {
     throw new TypeError('getSnapshot must be a function')
   }
+  if (getMetrics !== null && typeof getMetrics !== 'function') {
+    throw new TypeError('getMetrics must be a function or null')
+  }
 
   const server = http.createServer((req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname
+    const isHead = req.method === 'HEAD'
 
-    if (req.method !== 'GET') {
-      res.setHeader('allow', 'GET')
+    if (req.method !== 'GET' && !isHead) {
+      res.setHeader('allow', 'GET, HEAD')
       return writeJson(res, 405, { error: 'method_not_allowed' })
     }
 
@@ -44,6 +58,11 @@ export function createHealthServer({
         uptime: snapshot?.uptime || 'unknown',
         version: snapshot?.version || 'unknown'
       })
+    }
+
+    if (pathname === '/metrics') {
+      if (!getMetrics) return writeJson(res, 404, { error: 'metrics_not_enabled' })
+      return writeText(res, 200, String(getMetrics()))
     }
 
     if (pathname === '/') {
