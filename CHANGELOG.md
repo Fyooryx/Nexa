@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.7.0 — Contract and security hardening
+
+### Added
+- fail-fast `CommandRegistry` abstraction for command registration and lookup
+- startup validation for command name, aliases, category, and handler contract
+- regression coverage for alias collision detection
+- event-loop maximum latency Prometheus metric
+
+### Fixed
+- `.authstatus` now uses redacted bot identity output
+- HTTP health server now returns bodyless responses for `HEAD`
+- malformed request URLs return a controlled `400` response instead of escaping the request handler
+- readiness telemetry uses a direct `nexa_ready` gauge instead of a misleading per-state zero/one series
+
+### Operations
+- command registration now fails closed instead of silently overwriting a previous alias
+
+
 ## 3.6.0 — Runtime telemetry
 
 ### Added
