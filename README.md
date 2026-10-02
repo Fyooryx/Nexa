@@ -1,11 +1,16 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.8.0**  
+**Current version: 3.9.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.8.0 upgrade
+## 3.9.0 upgrade
+
+- optional bearer-token protection for public `/metrics`
+- deployment template no longer embeds personal owner/bot identifiers
+- duplicate shutdown handlers removed from the health launcher
+- metrics and runtime endpoints remain separate from WhatsApp session credentials
 
 - circuit breaker for AI provider failures
 - exponential-backoff retry for transient AI `429` / `5xx` responses
@@ -249,6 +254,7 @@ See `docs/deployment.md` for platform-specific guidance.
 .profile
 .ai <prompt>
 .aiclear
+.aistatus
 ```
 
 ### Group
@@ -357,11 +363,12 @@ Important settings:
 - `STORE_FLUSH_MS`: periodic state flush interval (5s–120s)
 - `HEALTH_HOST` / `HEALTH_PORT`: runtime health server binding
 - `PORT`: hosted-platform override for the health server port
-- `/metrics`: Prometheus-compatible runtime telemetry
+- `/metrics`: Prometheus-compatible runtime telemetry; set `METRICS_TOKEN` to require bearer authentication
 - `AI_MAX_RETRIES`: AI transient-failure retry count
 - `AI_RETRY_BASE_MS`: base delay for AI exponential backoff
 - `AI_CIRCUIT_FAILURE_THRESHOLD`: failures before the AI circuit opens
 - `AI_CIRCUIT_RESET_MS`: cooldown before a half-open recovery probe
+- `METRICS_TOKEN`: optional bearer token for `/metrics`
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
