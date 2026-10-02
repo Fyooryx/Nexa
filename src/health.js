@@ -41,13 +41,16 @@ export function formatHealth(snapshot) {
     `*${snapshot.bot} health*`,
     `Version: ${snapshot.version}`,
     `Owner: ${snapshot.owner}`,
-`Connection: ${snapshot.connection.toUpperCase()}`,
+    `Connection: ${snapshot.connection.toUpperCase()}`,
+    `Auth: ${snapshot.authMode}`,
+    `Reconnects: ${snapshot.reconnects}`,
     `Uptime: ${snapshot.uptime}`,
     `Node: ${snapshot.node}`,
     `Memory: ${snapshot.memory.rssMb} MB RSS | ${snapshot.memory.heapUsedMb}/${snapshot.memory.heapTotalMb} MB heap`,
     `Messages: ${snapshot.counters.messages}`,
     `Commands: ${snapshot.counters.commands}`,
     `Groups: ${snapshot.counters.groups}`,
-    `Users: ${snapshot.counters.users}`
+    `Users: ${snapshot.counters.users}`,
+    `Metadata cache: ${snapshot.metadataCacheSize}`
   ].join('\\n')
 }
