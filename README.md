@@ -1,11 +1,18 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.4.0**  
+**Current version: 3.5.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.4.0 upgrade
+## 3.5.0 upgrade
+
+- lightweight HTTP liveness endpoint at `/healthz`
+- connection-aware readiness endpoint at `/readyz`
+- dedicated `src/server.js` launcher for hosted runtime probes
+- `HEALTH_HOST` / `HEALTH_PORT` configuration with hosted `PORT` precedence
+- resilient queued JSON persistence after write failures
+- health output now exposes auth mode and metadata-cache state
 
 - canonical PN/LID identity key for users, cooldowns, and stats
 - real connection-aware health state
@@ -178,6 +185,8 @@ docker run --rm -it \
 
 For a hosted worker, mount one persistent directory and set `AUTH_DIR` and `DATA_DIR` to subdirectories inside it. The included Dockerfile uses `/app/runtime/auth_info` and `/app/runtime/data` by default.
 
+The runtime HTTP probe is described in `docs/deployment.md`. Use `/healthz` for process liveness and `/readyz` when a platform should require an open WhatsApp connection.
+
 See `docs/deployment.md` for platform-specific guidance.
  
 ## Commands
@@ -327,6 +336,7 @@ Important settings:
 - `MAX_MESSAGE_LENGTH`: input safety limit
 - `WARN_LIMIT`: warning threshold
 - `STORE_FLUSH_MS`: periodic state flush interval (5s–120s)
+- `HEALTH_HOST` / `HEALTH_PORT`: runtime health server binding
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
@@ -355,10 +365,12 @@ src/
 ├── config.js
 ├── filters.js
 ├── health.js
+├── http.js
 ├── index.js
 ├── limits.js
 ├── metadata.js
 ├── runtime.js
+├── server.js
 ├── store.js
 └── utils.js
 test/
