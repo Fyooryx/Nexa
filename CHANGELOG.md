@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.8.0 — Dependency resilience
+
+### Added
+- `CircuitBreaker` primitive with closed/open/half-open lifecycle
+- retry helper with exponential backoff and `Retry-After` handling
+- resilient AI provider execution for transient `429` / `5xx` failures
+- `.aistatus` / `.aicircuit` command for dependency state visibility
+- deterministic injected-fetch tests for retry behavior
+
+### Improved
+- AI requests stop hammering a failing dependency after repeated failures
+- aborted requests are not retried after the configured signal has expired
+
+
 ## 3.7.0 — Contract and security hardening
 
 ### Added
