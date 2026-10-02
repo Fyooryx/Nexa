@@ -38,7 +38,7 @@ QR mode uses an empty PAIRING_NUMBER. Pairing-code mode uses the bot account num
 
 ## Render
 
-Use a Background Worker or Docker-based worker. Attach persistent storage for auth_info/ and data/. Keep one active worker while Nexa uses file-based state; multiple replicas writing the same JSON state are not a safe topology.
+Use a Background Worker or Docker-based worker. Attach one persistent volume covering `/app/runtime` (which contains `auth_info/` and `data/`). Keep one active worker while Nexa uses file-based state; multiple replicas writing the same JSON state are not a safe topology.
 
 ## Railway
 
