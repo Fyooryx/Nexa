@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { RateLimiter, MessageDeduper } from '../src/limits.js'
 import { FloodGuard } from '../src/flood.js'
 import { JsonStore } from '../src/store.js'
-import { rm } from 'node:fs/promises'
+import { createHealthServer } from '../src/http.js'
+import { rm, readFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -96,8 +97,10 @@ import { config } from '../src/config.js'
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.4.0')
+  assert.equal(config.botVersion, '3.5.0')
   assert.equal(config.pairingNumber, '')
+  assert.equal(config.healthHost, '0.0.0.0')
+  assert.equal(config.healthPort, 3000)
 })
 
 import { healthSnapshot, formatHealth } from '../src/health.js'
@@ -106,13 +109,45 @@ test('health snapshot exposes Kyren owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '3.4.0', ownerName: 'Kyren' },
+    config: { botName: 'Nexa', botVersion: '3.5.0', ownerName: 'Kyren' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
   assert.equal(snapshot.owner, 'Kyren')
   assert.equal(snapshot.connected, true)
   assert.equal(snapshot.counters.messages, 4)
   assert.match(formatHealth(snapshot), /Owner: Kyren/)
+})
+
+test('health server exposes liveness and connection readiness', async () => {
+  const state = { connection: 'connecting', uptime: '1s', version: '3.5.0' }
+  const health = createHealthServer({
+    host: '127.0.0.1',
+    port: 0,
+    logger: console,
+    getSnapshot: () => state
+  })
+
+  const address = await health.start()
+  const base = 'http://127.0.0.1:' + address.port
+
+  try {
+    const live = await fetch(base + '/healthz')
+    assert.equal(live.status, 200)
+    assert.deepEqual(await live.json(), { status: 'ok', service: 'nexa' })
+
+    const notReady = await fetch(base + '/readyz')
+    assert.equal(notReady.status, 503)
+
+    state.connection = 'open'
+    const ready = await fetch(base + '/readyz')
+    assert.equal(ready.status, 200)
+    assert.equal((await ready.json()).ready, true)
+
+    const missing = await fetch(base + '/missing')
+    assert.equal(missing.status, 404)
+  } finally {
+    await health.close()
+  }
 })
 
 import { addKeyword, findMatchedKeyword, removeKeyword } from '../src/filters.js'
@@ -124,7 +159,7 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), 'scam')
   assert.equal(removeKeyword(group, 'SCAM'), true)
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), null)
-  for (let i = 0; i < 100; i++) assert.equal(addKeyword(group, `word-${i}`), true)
+  for (let i = 0; i < 100; i++) assert.equal(addKeyword(group, 'word-' + i), true)
   assert.equal(addKeyword(group, 'overflow-a'), false)
 })
 
@@ -151,7 +186,19 @@ test('JsonStore counts a command once, not twice', async () => {
   }
 })
 
-import { readFile } from 'node:fs/promises'
+test('JsonStore recovers its write queue after a rejected write', async () => {
+  const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-recovery-')))
+  try {
+    const store = new JsonStore(dir)
+    await store.init()
+    store.data.meta.messages = 1
+    const originalWriteFile = store.file
+    await store.persist()
+    assert.equal((await readFile(originalWriteFile, 'utf8')).includes('"messages": 1'), true)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
 
 test('commands exposes authstatus and canonical self-state uses userKey', async () => {
   const source = await readFile(new URL('../src/commands.js', import.meta.url), 'utf8')
