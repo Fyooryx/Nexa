@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.6.0 — Runtime telemetry
+
+### Added
+- Node.js event-loop delay telemetry with low-overhead native `perf_hooks` monitoring
+- Prometheus-compatible `/metrics` endpoint
+- runtime memory metrics for RSS, V8 heap, external buffers, and ArrayBuffers
+- event-loop mean, p95, and maximum latency metrics
+- health server GET/HEAD method contract
+
+### Improved
+- dedicated health launcher now starts telemetry before the WhatsApp worker
+- liveness remains independent from WhatsApp readiness, allowing hosted probes during boot/reconnect
+- telemetry lifecycle is explicitly stopped during process shutdown
+
+
 ## 3.5.0 — Resilience and observability
 
 ### Added
