@@ -29,6 +29,10 @@ export const config = Object.freeze({
     baseUrl: (process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
     model: process.env.AI_MODEL || 'gpt-4o-mini',
     maxTurns: int(process.env.AI_MAX_TURNS, 6, 2, 12),
-    timeoutMs: int(process.env.AI_TIMEOUT_MS, 30000, 5000, 120000)
+    timeoutMs: int(process.env.AI_TIMEOUT_MS, 30000, 5000, 120000),
+    maxRetries: int(process.env.AI_MAX_RETRIES, 2, 0, 5),
+    retryBaseMs: int(process.env.AI_RETRY_BASE_MS, 250, 50, 5000),
+    circuitFailureThreshold: int(process.env.AI_CIRCUIT_FAILURE_THRESHOLD, 3, 1, 10),
+    circuitResetMs: int(process.env.AI_CIRCUIT_RESET_MS, 30000, 1000, 300000)
   }
 })
