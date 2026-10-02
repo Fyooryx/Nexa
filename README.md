@@ -1,11 +1,18 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.6.0**  
+**Current version: 3.7.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.6.0 upgrade
+## 3.7.0 upgrade
+
+- fail-fast `CommandRegistry` with alias collision detection
+- explicit command contract validation at startup
+- privacy hardening for `.authstatus` identity output
+- hardened HTTP request parsing and correct `HEAD` semantics
+- Prometheus readiness metric normalized to `nexa_ready`
+- event-loop maximum latency metric added to telemetry
 
 - runtime telemetry based on Node.js event-loop delay monitoring
 - Prometheus-compatible `/metrics` endpoint
@@ -377,6 +384,7 @@ src/
 ├── index.js
 ├── limits.js
 ├── metadata.js
+├── registry.js
 ├── runtime.js
 ├── server.js
 ├── telemetry.js
