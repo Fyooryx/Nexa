@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
+import { CommandRegistry } from './registry.js'
 import { formatHealth, healthSnapshot } from './health.js'
 import { addKeyword, findMatchedKeyword, listKeywords, removeKeyword } from './filters.js'
 import { adminParticipants, adminSet, isAdmin, isBotAdmin, participantJids } from './metadata.js'
@@ -985,23 +986,15 @@ export const COMMANDS = [
   })
 ]
 
-export const COMMAND_MAP = new Map()
-for (const item of COMMANDS) {
-  COMMAND_MAP.set(item.name, item)
-  for (const alias of item.aliases) COMMAND_MAP.set(alias, item)
-}
+export const COMMAND_REGISTRY = new CommandRegistry(COMMANDS)
+export const COMMAND_MAP = COMMAND_REGISTRY.map
 
 export function findCommand(name) {
-  return COMMAND_MAP.get(name.toLowerCase())
+  return COMMAND_REGISTRY.get(name)
 }
 
 export function categories() {
-  const result = new Map()
-  for (const item of COMMANDS) {
-    if (!result.has(item.category)) result.set(item.category, [])
-    result.get(item.category).push(item)
-  }
-  return result
+  return COMMAND_REGISTRY.categories()
 }
 
 export async function handleGroupAutomation(ctx) {
