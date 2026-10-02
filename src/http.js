@@ -24,6 +24,7 @@ function writeText(res, statusCode, body, contentType = 'text/plain; version=0.0
 export function createHealthServer({
   getSnapshot,
   getMetrics = null,
+  metricsToken = '',
   host = '0.0.0.0',
   port = 3000,
   logger = console
@@ -72,6 +73,16 @@ export function createHealthServer({
 
     if (pathname === '/metrics') {
       if (!getMetrics) return writeJson(res, 404, { error: 'metrics_not_enabled' }, headOptions)
+
+      if (metricsToken) {
+        const authorization = String(req.headers.authorization || '')
+        const expected = 'Bearer ' + metricsToken
+        if (authorization !== expected) {
+          res.setHeader('www-authenticate', 'Bearer')
+          return writeJson(res, 401, { error: 'unauthorized' }, headOptions)
+        }
+      }
+
       return writeText(res, 200, String(getMetrics()), 'text/plain; version=0.0.4', headOptions)
     }
 
