@@ -180,8 +180,30 @@ test('health server exposes liveness and connection readiness', async () => {
     assert.equal(ready.status, 200)
     assert.equal((await ready.json()).ready, true)
 
+    const metricsHealth = createHealthServer({
+      host: '127.0.0.1',
+      port: 0,
+      logger: console,
+      getSnapshot: () => state,
+      getMetrics: () => 'nexa_up 1\\n'
+    })
+    const metricsAddress = await metricsHealth.start()
+    const metricsBase = 'http://127.0.0.1:' + metricsAddress.port
+
+    const metrics = await fetch(metricsBase + '/metrics')
+    assert.equal(metrics.status, 200)
+    assert.match(await metrics.text(), /nexa_up 1/)
+    await metricsHealth.close()
+
+    const head = await fetch(base + '/healthz', { method: 'HEAD' })
+    assert.equal(head.status, 200)
+    assert.equal((await head.arrayBuffer()).byteLength, 0)
+
     const missing = await fetch(base + '/missing')
     assert.equal(missing.status, 404)
+
+    const unsupported = await fetch(base + '/healthz', { method: 'POST' })
+    assert.equal(unsupported.status, 405)
   } finally {
     await health.close()
   }
