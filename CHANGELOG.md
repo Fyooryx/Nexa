@@ -1,11 +1,31 @@
 # Changelog
 
+## 3.5.0 — Resilience and observability
+
+### Added
+- lightweight HTTP liveness endpoint at /healthz
+- connection-aware readiness endpoint at /readyz
+- minimal root service endpoint at /
+- dedicated src/server.js launcher so hosted workers can expose a runtime probe without changing the Baileys worker flow
+- HEALTH_HOST / HEALTH_PORT configuration, with hosted PORT taking precedence
+- regression coverage for health endpoint status behavior
+
+### Fixed
+- health output now includes authentication mode, reconnect count, and metadata-cache size
+- JSON store writes now recover after a rejected queued write instead of permanently poisoning the write chain
+- JSON serialization happens when each queued write actually starts, keeping the persisted snapshot aligned with the latest in-memory state
+
+### Operations
+- Nexa worker remains a single persistent process with file-based auth/data storage
+- /healthz is intended for process-level liveness checks; /readyz reflects actual WhatsApp runtime readiness
+- live WhatsApp E2E remains a separate verification step after deployment
+
 ## 3.4.0 — Deployment architecture
 
 ### Added
 - production Dockerfile for the persistent Nexa worker
-- Docker build exclusions for `.env`, `auth_info/`, and `data/`
-- `docs/deployment.md` covering Vercel, Netlify, Supabase, Render, Railway, and VPS roles
+- Docker build exclusions for .env, auth_info/, and data/
+- docs/deployment.md covering Vercel, Netlify, Supabase, Render, Railway, and VPS roles
 
 ### Architecture
 - keep the live Baileys socket on a persistent Node.js worker
@@ -17,15 +37,15 @@
 ## 3.3.1 — Owner and bot identity configuration
 
 ### Changed
-- configure the provided WhatsApp number as `OWNER_NUMBER`
-- configure the same number as `PAIRING_NUMBER` for pairing-code mode
+- configure the provided WhatsApp number as OWNER_NUMBER
+- configure the same number as PAIRING_NUMBER for pairing-code mode
 - Nexa version bumped to 3.3.1
 
 
 ## 3.3.0 — Diagnostics and cache maintenance
 
 ### Added
-- `diagnose` / `diag` safe runtime and setup diagnostic command
+- diagnose / diag safe runtime and setup diagnostic command
 - auth mode and metadata-cache visibility in health output
 
 ### Improved
@@ -33,27 +53,27 @@
 - Nexa version bumped to 3.3.0
 
 ### Security
-- `.diagnose` reports only whether `PAIRING_NUMBER` is configured; it does not print the number
-- `.diagnose` redacts phone-based bot identity instead of exposing a raw JID
+- .diagnose reports only whether PAIRING_NUMBER is configured; it does not print the number
+- .diagnose redacts phone-based bot identity instead of exposing a raw JID
 
 
 ## 3.2.0 — QR fallback and identity hardening
 
 ### Fixed
 - remove duplicated anti-flood group normalization fields
-- correct `FloodGuard.firstViolation` regression coverage
+- correct FloodGuard.firstViolation regression coverage
 - unify AI and chat statistics on the canonical PN/LID user key
-- make `.warnings` safely resolve the current sender when no target is supplied
+- make .warnings safely resolve the current sender when no target is supplied
 
 ### Added
-- `authstatus` diagnostic command for QR/pairing/saved-session visibility
-- explicit startup messaging for QR mode when `PAIRING_NUMBER` is empty
-- secure `.env.example` default with no personal-looking owner number
+- authstatus diagnostic command for QR/pairing/saved-session visibility
+- explicit startup messaging for QR mode when PAIRING_NUMBER is empty
+- secure .env.example default with no personal-looking owner number
 - canonical participant regression coverage
 - Nexa version bumped to 3.2.0
 
 ### Authentication note
-- empty `PAIRING_NUMBER` means **QR mode**, not a number-less WhatsApp bot
+- empty PAIRING_NUMBER means QR mode, not a number-less WhatsApp bot
 - Nexa still needs an authorized WhatsApp account to scan the QR or complete pairing
 - saved authentication sessions continue to start without re-pairing
 
