@@ -1,8 +1,8 @@
 FROM node:20-bookworm-slim
 
 ENV NODE_ENV=production \
-    AUTH_DIR=/app/auth_info \
-    DATA_DIR=/app/data
+    AUTH_DIR=/app/runtime/auth_info \
+    DATA_DIR=/app/runtime/data
 
 WORKDIR /app
 
@@ -12,9 +12,9 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY src ./src
 COPY start.sh ./
 
-RUN mkdir -p /app/auth_info /app/data \
+RUN mkdir -p /app/runtime/auth_info /app/runtime/data \
     && chmod 755 /app/start.sh
 
-VOLUME ["/app/auth_info", "/app/data"]
+VOLUME ["/app/runtime"]
 
 CMD ["npm", "start"]
