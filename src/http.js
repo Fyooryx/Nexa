@@ -1,22 +1,24 @@
 import http from 'node:http'
 
-function writeJson(res, statusCode, payload) {
+function writeJson(res, statusCode, payload, { head = false } = {}) {
   const body = JSON.stringify(payload)
   res.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
     'content-length': Buffer.byteLength(body)
   })
-  res.end(body)
+  if (!head) res.end(body)
+  else res.end()
 }
 
-function writeText(res, statusCode, body, contentType = 'text/plain; version=0.0.4') {
+function writeText(res, statusCode, body, contentType = 'text/plain; version=0.0.4', { head = false } = {}) {
   res.writeHead(statusCode, {
     'content-type': contentType + '; charset=utf-8',
     'cache-control': 'no-store',
     'content-length': Buffer.byteLength(body)
   })
-  res.end(body)
+  if (!head) res.end(body)
+  else res.end()
 }
 
 export function createHealthServer({
@@ -34,8 +36,16 @@ export function createHealthServer({
   }
 
   const server = http.createServer((req, res) => {
-    const pathname = new URL(req.url || '/', 'http://localhost').pathname
     const isHead = req.method === 'HEAD'
+    const headOptions = { head: isHead }
+
+    let pathname
+    try {
+      pathname = new URL(req.url || '/', 'http://localhost').pathname
+    } catch (error) {
+      logger.warn?.({ err: error }, 'invalid health request URL')
+      return writeJson(res, 400, { error: 'bad_request' }, headOptions)
+    }
 
     if (req.method !== 'GET' && !isHead) {
       res.setHeader('allow', 'GET, HEAD')
@@ -46,7 +56,7 @@ export function createHealthServer({
       return writeJson(res, 200, {
         status: 'ok',
         service: 'nexa'
-      })
+      }, headOptions)
     }
 
     if (pathname === '/readyz') {
@@ -57,12 +67,12 @@ export function createHealthServer({
         connection: snapshot?.connection || 'unknown',
         uptime: snapshot?.uptime || 'unknown',
         version: snapshot?.version || 'unknown'
-      })
+      }, headOptions)
     }
 
     if (pathname === '/metrics') {
-      if (!getMetrics) return writeJson(res, 404, { error: 'metrics_not_enabled' })
-      return writeText(res, 200, String(getMetrics()))
+      if (!getMetrics) return writeJson(res, 404, { error: 'metrics_not_enabled' }, headOptions)
+      return writeText(res, 200, String(getMetrics()), 'text/plain; version=0.0.4', headOptions)
     }
 
     if (pathname === '/') {
@@ -71,10 +81,10 @@ export function createHealthServer({
         service: 'nexa',
         version: snapshot?.version || 'unknown',
         connection: snapshot?.connection || 'unknown'
-      })
+      }, headOptions)
     }
 
-    return writeJson(res, 404, { error: 'not_found' })
+    return writeJson(res, 404, { error: 'not_found' }, headOptions)
   })
 
   server.on('error', error => {
