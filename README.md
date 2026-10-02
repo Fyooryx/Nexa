@@ -1,11 +1,17 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.7.0**  
+**Current version: 3.8.0**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.7.0 upgrade
+## 3.8.0 upgrade
+
+- circuit breaker for AI provider failures
+- exponential-backoff retry for transient AI `429` / `5xx` responses
+- `Retry-After` aware dependency backoff
+- injectable fetch implementation for deterministic resilience tests
+- new `.aistatus` / `.aicircuit` runtime command
 
 - fail-fast `CommandRegistry` with alias collision detection
 - explicit command contract validation at startup
@@ -352,6 +358,10 @@ Important settings:
 - `HEALTH_HOST` / `HEALTH_PORT`: runtime health server binding
 - `PORT`: hosted-platform override for the health server port
 - `/metrics`: Prometheus-compatible runtime telemetry
+- `AI_MAX_RETRIES`: AI transient-failure retry count
+- `AI_RETRY_BASE_MS`: base delay for AI exponential backoff
+- `AI_CIRCUIT_FAILURE_THRESHOLD`: failures before the AI circuit opens
+- `AI_CIRCUIT_RESET_MS`: cooldown before a half-open recovery probe
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
@@ -388,6 +398,7 @@ src/
 ├── runtime.js
 ├── server.js
 ├── telemetry.js
+├── resilience.js
 ├── store.js
 └── utils.js
 test/
