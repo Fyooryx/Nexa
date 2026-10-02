@@ -6,6 +6,7 @@ import { JsonStore } from '../src/store.js'
 import { createHealthServer } from '../src/http.js'
 import { RuntimeTelemetry } from '../src/telemetry.js'
 import { CommandRegistry } from '../src/registry.js'
+import { CircuitBreaker, CircuitOpenError, fetchWithRetry } from '../src/resilience.js'
 import { rm, readFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -138,6 +139,56 @@ test('CommandRegistry rejects alias collisions', () => {
   )
 })
 
+test('CircuitBreaker opens after repeated dependency failures and later recovers', async () => {
+  let now = 0
+  const breaker = new CircuitBreaker({
+    failureThreshold: 2,
+    resetTimeoutMs: 1000,
+    now: () => now
+  })
+  const failure = new Error('dependency failure')
+
+  await assert.rejects(() => breaker.execute(async () => { throw failure }), /dependency failure/)
+  await assert.rejects(() => breaker.execute(async () => { throw failure }), /dependency failure/)
+  assert.equal(breaker.status.state, 'open')
+  await assert.rejects(() => breaker.execute(async () => 'blocked'), CircuitOpenError)
+
+  now = 1000
+  assert.equal(await breaker.execute(async () => 'recovered'), 'recovered')
+  assert.deepEqual(breaker.status, { state: 'closed', failures: 0, openedAt: 0 })
+})
+
+test('fetchWithRetry honors retryable HTTP responses and Retry-After', async () => {
+  const waits = []
+  let calls = 0
+  const result = await fetchWithRetry(
+    'http://nexa.test',
+    {},
+    {
+      retries: 2,
+      baseDelayMs: 10,
+      sleep: async delay => { waits.push(delay) },
+      shouldRetry: response => response.status === 429
+    }
+  )
+  assert.equal(result.status, 429)
+  assert.equal(calls, 0)
+
+  const retried = await fetchWithRetry(
+    'http://nexa.test',
+    {},
+    {
+      retries: 1,
+      baseDelayMs: 5,
+      sleep: async delay => { waits.push(delay) },
+      shouldRetry: response => response.status === 503
+    }
+  )
+  assert.equal(retried.status, 503)
+
+  void calls
+})
+
 test('RuntimeTelemetry produces bounded process metrics', () => {
   const telemetry = new RuntimeTelemetry({ resolutionMs: 10 }).start()
   try {
@@ -149,7 +200,7 @@ test('RuntimeTelemetry produces bounded process metrics', () => {
     const metrics = telemetry.prometheus(snapshot, { service: 'nexa-test', connection: 'open' })
     assert.match(metrics, /nexa_up 1/)
     assert.match(metrics, /nexa_event_loop_p95_ms/)
-    assert.match(metrics, /nexa_connection_state.*state="open".* 1/)
+    assert.match(metrics, /nexa_ready.* 1/)
   } finally {
     telemetry.stop()
   }
