@@ -158,36 +158,57 @@ test('CircuitBreaker opens after repeated dependency failures and later recovers
   assert.deepEqual(breaker.status, { state: 'closed', failures: 0, openedAt: 0 })
 })
 
-test('fetchWithRetry honors retryable HTTP responses and Retry-After', async () => {
+test('fetchWithRetry retries retryable HTTP responses with injected dependencies', async () => {
   const waits = []
+  const responses = [
+    new Response('busy', { status: 503 }),
+    new Response('ok', { status: 200 })
+  ]
   let calls = 0
+
   const result = await fetchWithRetry(
     'http://nexa.test',
     {},
     {
-      retries: 2,
+      retries: 1,
       baseDelayMs: 10,
       sleep: async delay => { waits.push(delay) },
-      shouldRetry: response => response.status === 429
+      fetchImpl: async () => responses[calls++]
     }
   )
-  assert.equal(result.status, 429)
-  assert.equal(calls, 0)
 
-  const retried = await fetchWithRetry(
+  assert.equal(result.status, 200)
+  assert.equal(calls, 2)
+  assert.deepEqual(waits, [10])
+})
+
+test('fetchWithRetry respects Retry-After over exponential delay', async () => {
+  const waits = []
+  let calls = 0
+  const response = new Response('busy', {
+    status: 429,
+    headers: { 'retry-after': '2' }
+  })
+
+  const result = await fetchWithRetry(
     'http://nexa.test',
     {},
     {
       retries: 1,
       baseDelayMs: 5,
       sleep: async delay => { waits.push(delay) },
-      shouldRetry: response => response.status === 503
+      fetchImpl: async () => {
+        calls += 1
+        return response
+      }
     }
   )
-  assert.equal(retried.status, 503)
 
-  void calls
+  assert.equal(result.status, 429)
+  assert.equal(calls, 2)
+  assert.deepEqual(waits, [2000])
 })
+
 
 test('RuntimeTelemetry produces bounded process metrics', () => {
   const telemetry = new RuntimeTelemetry({ resolutionMs: 10 }).start()
