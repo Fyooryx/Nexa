@@ -85,7 +85,8 @@ export async function fetchWithRetry(
     baseDelayMs = 250,
     maxDelayMs = 5000,
     shouldRetry = defaultShouldRetry,
-    sleep = delay => new Promise(resolve => setTimeout(resolve, delay))
+    sleep = delay => new Promise(resolve => setTimeout(resolve, delay)),
+    fetchImpl = fetch
   } = {}
 ) {
   const attempts = Math.max(0, Number(retries) || 0)
@@ -95,7 +96,7 @@ export async function fetchWithRetry(
   let attempt = 0
   while (true) {
     try {
-      const response = await fetch(url, options)
+      const response = await fetchImpl(url, options)
       if (!shouldRetry(response) || attempt >= attempts) return response
 
       const retryAfter = parseRetryAfter(response.headers?.get?.('retry-after'))
