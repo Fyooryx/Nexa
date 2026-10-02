@@ -9,7 +9,7 @@ const int = (value, fallback, min, max) => {
 
 export const config = Object.freeze({
   botName: process.env.BOT_NAME || 'Nexa',
-  botVersion: '3.4.0',
+  botVersion: '3.5.0',
   ownerName: process.env.OWNER_NAME || 'Kyren',
   prefix: process.env.PREFIX || '.',
   ownerNumber: digits(process.env.OWNER_NUMBER || ''),
@@ -17,6 +17,8 @@ export const config = Object.freeze({
   dataDir: process.env.DATA_DIR || 'data',
   logLevel: process.env.LOG_LEVEL || 'info',
   pairingNumber: digits(process.env.PAIRING_NUMBER || process.env.PAIRING_CODE || ''),
+  healthHost: process.env.HEALTH_HOST || '0.0.0.0',
+  healthPort: int(process.env.PORT || process.env.HEALTH_PORT, 3000, 0, 65535),
   maxMessageLength: int(process.env.MAX_MESSAGE_LENGTH, 8000, 500, 20000),
   storeFlushMs: int(process.env.STORE_FLUSH_MS, 15000, 5000, 120000),
   commandCooldownMs: int(process.env.COMMAND_COOLDOWN_MS, 2500, 500, 60000),
