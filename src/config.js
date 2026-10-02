@@ -19,6 +19,7 @@ export const config = Object.freeze({
   pairingNumber: digits(process.env.PAIRING_NUMBER || process.env.PAIRING_CODE || ''),
   healthHost: process.env.HEALTH_HOST || '0.0.0.0',
   healthPort: int(process.env.PORT || process.env.HEALTH_PORT, 3000, 0, 65535),
+  metricsToken: process.env.METRICS_TOKEN || '',
   maxMessageLength: int(process.env.MAX_MESSAGE_LENGTH, 8000, 500, 20000),
   storeFlushMs: int(process.env.STORE_FLUSH_MS, 15000, 5000, 120000),
   commandCooldownMs: int(process.env.COMMAND_COOLDOWN_MS, 2500, 500, 60000),
