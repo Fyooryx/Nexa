@@ -186,15 +186,39 @@ test('JsonStore counts a command once, not twice', async () => {
   }
 })
 
+test('JsonStore writes the latest snapshot when a previous write is queued', async () => {
+  const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-queue-')))
+  try {
+    const store = new JsonStore(dir)
+    await store.init()
+
+    let release
+    store.writeChain = new Promise(resolve => { release = resolve })
+    store.data.meta.messages = 1
+    const pending = store.persist()
+    store.data.meta.messages = 2
+    release()
+
+    await pending
+    const raw = await readFile(store.file, 'utf8')
+    assert.equal(JSON.parse(raw).meta.messages, 2)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('JsonStore recovers its write queue after a rejected write', async () => {
   const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-recovery-')))
   try {
     const store = new JsonStore(dir)
     await store.init()
-    store.data.meta.messages = 1
-    const originalWriteFile = store.file
+    const originalFile = store.file
+    store.file = path.join(dir, 'missing-parent', 'nexa.json')
+    await assert.rejects(store.persist())
+    store.file = originalFile
+    store.data.meta.messages = 7
     await store.persist()
-    assert.equal((await readFile(originalWriteFile, 'utf8')).includes('"messages": 1'), true)
+    assert.equal(JSON.parse(await readFile(originalFile, 'utf8')).meta.messages, 7)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
