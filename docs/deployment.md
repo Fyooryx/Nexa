@@ -34,7 +34,7 @@ The default launcher is now node src/server.js. It starts the Nexa worker and a 
 
 HEALTH_HOST defaults to 0.0.0.0. HEALTH_PORT defaults to 3000, while an injected PORT takes precedence for hosted platforms.
 
-These endpoints intentionally expose no configured owner number, auth credentials, message contents, group lists, or stored user data.
+These endpoints intentionally expose no configured owner number, auth credentials, message contents, group lists, or stored user data. `/metrics` can optionally require `Authorization: Bearer <METRICS_TOKEN>` when `METRICS_TOKEN` is configured.
 
 ## Docker
 
