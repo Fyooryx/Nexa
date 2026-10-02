@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.9.0 — Operational hardening
+
+### Added
+- optional bearer authentication for `/metrics`
+- regression coverage for protected metrics access
+- redacted `.env.example` without embedded owner/bot phone identifiers
+
+### Fixed
+- health launcher no longer registers duplicate SIGINT/SIGTERM shutdown handlers alongside the worker
+- metrics endpoint now returns `401` with `WWW-Authenticate` when configured without valid bearer credentials
+
+### Operations
+- `/healthz` remains public liveness
+- `/readyz` remains connection-aware readiness
+- `/metrics` is public only when `METRICS_TOKEN` is empty
+
+
 ## 3.8.0 — Dependency resilience
 
 ### Added
