@@ -12,6 +12,7 @@ import {
   extractMentions,
   getMessageText,
   isGroupJid,
+  MediaTooLargeError,
   isOwner,
   normalizeJid,
   numberFromJid,
@@ -218,9 +219,10 @@ async function start() {
 
         const jid = message.key.remoteJid
         if (jid) {
-          await sock.sendMessage(jid, {
-            text: '⚠️ Nexa gagal memproses pesan tersebut.'
-          }).catch(() => {})
+          const text = error instanceof MediaTooLargeError
+            ? '⚠️ Media terlalu besar untuk diproses. Gunakan file yang lebih kecil.'
+            : '⚠️ Nexa gagal memproses pesan tersebut.'
+          await sock.sendMessage(jid, { text }).catch(() => {})
         }
       }
     }
@@ -451,6 +453,11 @@ setInterval(() => {
   commandLimiter.prune()
   floodGuard.prune()
   pruneLastCommand()
+  const removedUsers = store.pruneUsers(config.maxStoredUsers)
+  const removedGroups = store.pruneGroups(config.maxStoredGroups)
+  if (removedUsers || removedGroups) {
+    logger.info({ removedUsers, removedGroups }, 'pruned persistent state')
+  }
   for (const [jid, entry] of groupMetadataCache) {
     if (entry.expiresAt <= Date.now()) groupMetadataCache.delete(jid)
   }
