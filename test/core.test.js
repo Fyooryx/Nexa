@@ -100,7 +100,7 @@ import { config } from '../src/config.js'
 
 test('Docker build copies the lockfile before running npm ci', async () => {
   const dockerfile = await readFile(new URL('../Dockerfile', import.meta.url), 'utf8')
-  const lockfileCopy = dockerfile.indexOf('COPY package-lock.json ./')
+  const lockfileCopy = dockerfile.indexOf('COPY package.json package-lock.json ./')
   const cleanInstall = dockerfile.indexOf('RUN npm ci --omit=dev --no-audit --no-fund')
 
   assert.ok(lockfileCopy >= 0, 'Dockerfile must copy package-lock.json into the image')
