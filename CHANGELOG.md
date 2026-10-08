@@ -10,6 +10,7 @@
 - constrained supported Node.js version to 24.x
 - CI now builds the production Docker image after unit tests
 - upgraded `actions/setup-node` to v7, whose runtime uses Node.js 24
+- upgraded the dependency-review workflow's `actions/checkout` to v7.0.1
 
 ## 3.9.2 — Dependency maintenance
 
