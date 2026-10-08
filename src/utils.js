@@ -55,11 +55,26 @@ export function getQuotedMessage(message) {
   }
 }
 
-export async function downloadNode(node, type) {
+export class MediaTooLargeError extends Error {
+  constructor(maxBytes) {
+    super(`media exceeds the configured limit of ${maxBytes} bytes`)
+    this.name = 'MediaTooLargeError'
+    this.code = 'MEDIA_TOO_LARGE'
+    this.maxBytes = maxBytes
+  }
+}
+
+export async function downloadNode(node, type, { maxBytes = 8 * 1024 * 1024 } = {}) {
+  const limit = Math.max(64 * 1024, Number(maxBytes) || 8 * 1024 * 1024)
   const stream = await downloadContentFromMessage(node, type)
   const chunks = []
-  for await (const chunk of stream) chunks.push(chunk)
-  return Buffer.concat(chunks)
+  let total = 0
+  for await (const chunk of stream) {
+    total += chunk.length
+    if (total > limit) throw new MediaTooLargeError(limit)
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks, total)
 }
 
 export function mentionJid(value) {
