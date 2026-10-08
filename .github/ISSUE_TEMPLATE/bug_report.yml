@@ -1,0 +1,19 @@
+name: Bug report
+description: Laporkan bug / Report a bug
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Apa yang terjadi dan apa yang kamu harapkan?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: env
+    attributes:
+      label: Version / environment
