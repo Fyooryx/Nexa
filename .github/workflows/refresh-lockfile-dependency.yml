@@ -1,0 +1,27 @@
+name: Refresh lockfile dependency maintenance
+on:
+  push:
+    branches:
+      - chore/dependency-refresh-3.9.2
+permissions:
+  contents: write
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/chore/dependency-refresh-3.9.2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+      - name: Refresh lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/refresh-lockfile-dependency.yml
+          git add package-lock.json .github/workflows/refresh-lockfile-dependency.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "chore: refresh dependency lockfile"
+          git push
