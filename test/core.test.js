@@ -98,9 +98,19 @@ test('targetFromContext accepts quoted participant fallback', () => {
 
 import { config } from '../src/config.js'
 
+test('Docker build copies the lockfile before running npm ci', async () => {
+  const dockerfile = await readFile(new URL('../Dockerfile', import.meta.url), 'utf8')
+  const lockfileCopy = dockerfile.indexOf('COPY package.json package-lock.json ./')
+  const cleanInstall = dockerfile.indexOf('RUN npm ci --omit=dev --no-audit --no-fund')
+
+  assert.ok(lockfileCopy >= 0, 'Dockerfile must copy package-lock.json into the image')
+  assert.ok(cleanInstall >= 0, 'Dockerfile must use npm ci for the production install')
+  assert.ok(lockfileCopy < cleanInstall, 'the lockfile must be copied before npm ci runs')
+})
+
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.9.2')
+  assert.equal(config.botVersion, '3.9.3')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)

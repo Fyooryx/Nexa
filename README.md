@@ -1,9 +1,15 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.9.2**  
+**Current version: 3.9.3**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+
+## 3.9.3 runtime and Docker hardening
+
+- standardize runtime and CI on Node.js 24 LTS
+- fix Docker build by copying `package-lock.json` before `npm ci`
+- build the production Docker image in CI
 
 ## 3.9.0 upgrade
 
@@ -72,7 +78,7 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 24.x LTS
 - A WhatsApp account you are authorized to link as a companion device
 
 ## Setup
@@ -80,7 +86,7 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 Install and prepare the environment:
 
 ```bash
-npm install
+npm ci
 cp .env.example .env
 ```
 
