@@ -1,4 +1,22 @@
 # Changelog
+## 3.9.1 — Security and state hardening
+
+### Added
+- bounded media downloads with a configurable byte limit
+- bounded persistent user/group state with periodic pruning
+- default-deny `/metrics` unless `METRICS_TOKEN` is configured
+- redacted public identity diagnostics with owner-only full identity views
+- non-root Docker runtime
+- pinned GitHub Actions references and read-only workflow permissions
+
+### Fixed
+- public diagnostics no longer expose raw phone/JID/LID identifiers by default
+- persistent JSON state can no longer grow without an explicit configured bound
+- oversized media is rejected before the full payload is buffered
+
+### Deferred
+- deterministic `package-lock.json` generation is still required for full `npm ci` reproducibility
+
 
 ## 3.9.0 — Operational hardening
 
