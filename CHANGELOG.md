@@ -1,4 +1,13 @@
 # Changelog
+
+## 3.9.2 — Dependency maintenance
+
+### Updated
+- `dotenv` 18.0.5
+- `pino` 10.4.0
+- GitHub Actions checkout 7.0.1
+- GitHub dependency review action 5.0.0
+
 ## 3.9.1 — Security and state hardening
 
 ### Added
