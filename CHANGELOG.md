@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.9.3 — Node 24 LTS and Docker build integrity
+
+### Fixed
+- Dockerfile now copies `package-lock.json` before running `npm ci`, restoring deterministic production image builds
+
+### Updated
+- moved Docker and CI runtime to Node.js 24 LTS
+- constrained supported Node.js version to 24.x
+- CI now builds the production Docker image after unit tests
+
 ## 3.9.2 — Dependency maintenance
 
 ### Updated
