@@ -15,7 +15,7 @@
 - oversized media is rejected before the full payload is buffered
 
 ### Deferred
-- deterministic `package-lock.json` generation is still required for full `npm ci` reproducibility
+- deterministic `package-lock.json` is now committed and CI/Docker use `npm ci`
 
 
 ## 3.9.0 — Operational hardening
