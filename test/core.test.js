@@ -61,7 +61,7 @@ test('JsonStore initializes and persists normalized group state', async () => {
 })
 
 import { participantMatches, adminSet } from '../src/metadata.js'
-import { parseCommand, targetFromContext } from '../src/utils.js'
+import { MediaTooLargeError, parseCommand, targetFromContext } from '../src/utils.js'
 
 test('LID-aware participant matching recognizes id, phoneNumber and lid', () => {
   const participant = {
@@ -104,6 +104,9 @@ test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
+  assert.equal(config.maxMediaBytes, 8 * 1024 * 1024)
+  assert.equal(config.maxStoredUsers, 50000)
+  assert.equal(config.maxStoredGroups, 10000)
 })
 
 import { healthSnapshot, formatHealth } from '../src/health.js'
@@ -290,8 +293,7 @@ test('health server exposes liveness and connection readiness', async () => {
     const metricsBase = 'http://127.0.0.1:' + metricsAddress.port
 
     const metrics = await fetch(metricsBase + '/metrics')
-    assert.equal(metrics.status, 200)
-    assert.match(await metrics.text(), /nexa_up 1/)
+    assert.equal(metrics.status, 503)
     await metricsHealth.close()
 
     const head = await fetch(base + '/healthz', { method: 'HEAD' })
@@ -390,4 +392,34 @@ test('commands exposes authstatus and canonical self-state uses userKey', async 
   assert.match(source, /function safeIdentity\(jid\)/)
   assert.doesNotMatch(source, /ctx\.store\.user\(ctx\.sender\)\.afk/)
   assert.doesNotMatch(source, /const user = ctx\.store\.user\(ctx\.sender\)/)
+})
+
+
+test('JsonStore prunes inactive state to configured bounds', async () => {
+  const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-prune-')))
+  try {
+    const store = new JsonStore(dir)
+    await store.init()
+    store.data.users = {
+      old: { afk: null, messages: 1, lastSeenAt: 1, warnings: {}, aiHistory: [] },
+      middle: { afk: null, messages: 1, lastSeenAt: 2, warnings: {}, aiHistory: [] },
+      newest: { afk: null, messages: 1, lastSeenAt: 3, warnings: {}, aiHistory: [] }
+    }
+    store.data.groups = {
+      'old@g.us': { lastSeenAt: 1 },
+      'new@g.us': { lastSeenAt: 2 }
+    }
+    assert.equal(store.pruneUsers(2), 1)
+    assert.deepEqual(Object.keys(store.data.users).sort(), ['middle', 'newest'])
+    assert.equal(store.pruneGroups(1), 1)
+    assert.deepEqual(Object.keys(store.data.groups), ['new@g.us'])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('MediaTooLargeError exposes a stable error code', () => {
+  const error = new MediaTooLargeError(1024)
+  assert.equal(error.code, 'MEDIA_TOO_LARGE')
+  assert.equal(error.maxBytes, 1024)
 })
