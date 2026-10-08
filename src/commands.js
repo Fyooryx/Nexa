@@ -127,9 +127,13 @@ export const COMMANDS = [
   command('botid', ['botnumber'], 'General', 'Tampilkan identitas akun WhatsApp Nexa yang sedang terhubung.', async ctx => {
     const id = ctx.sock.user?.id || ''
     const lid = ctx.sock.user?.lid || ''
-    const number = numberFromJid(id)
-    const phone = id.includes('@s.whatsapp.net') ? number : 'tidak tersedia dari JID aktif'
-    return ctx.reply(`🤖 Bot number: ${phone}\nBot JID: ${id || '-'}\nLID: ${lid || '-'}`)
+    if (ctx.args[0]?.toLowerCase() === 'full') {
+      await requireOwner(ctx)
+      return ctx.reply(`🤖 Bot JID: ${id || '-'}
+LID: ${lid || '-'}`)
+    }
+    return ctx.reply(`🤖 Bot identity: ${safeIdentity(id)}
+LID: ${safeIdentity(lid)}`)
   }),
 
   command('menu', ['help', 'start'], 'General', 'Tampilkan semua fitur.', async ctx => {
@@ -187,12 +191,23 @@ export const COMMANDS = [
   }),
 
   command('owner', ['creator'], 'General', 'Tampilkan identitas owner Nexa.', async ctx => {
-    const owner = config.ownerNumber ? `https://wa.me/${config.ownerNumber}` : 'Nomor owner belum dikonfigurasi'
-    return ctx.reply(`👑 Owner: ${config.ownerName}\n${owner}`)
+    if (ctx.isOwner && config.ownerNumber) {
+      return ctx.reply(`👑 Owner: ${config.ownerName}
+https://wa.me/${config.ownerNumber}`)
+    }
+    return ctx.reply(`👑 Owner: ${config.ownerName}`)
   }),
 
   command('id', ['jid'], 'General', 'Tampilkan identitas chat dan sender.', async ctx => {
-    return ctx.reply(`Chat: ${ctx.jid}\nSender: ${ctx.sender}\nNumber: ${numberFromJid(ctx.sender)}`)
+    if (ctx.args[0]?.toLowerCase() === 'full') {
+      await requireOwner(ctx)
+      return ctx.reply(`Chat: ${ctx.jid}
+Sender: ${ctx.sender}
+Number: ${numberFromJid(ctx.sender)}`)
+    }
+    const chatType = isGroupJid(ctx.jid) ? 'group' : 'private'
+    return ctx.reply(`Chat type: ${chatType}
+Sender: ${safeIdentity(ctx.sender)}`)
   }),
 
   command('time', [], 'General', 'Tampilkan waktu timezone tertentu.', async ctx => {
@@ -265,7 +280,7 @@ export const COMMANDS = [
     const user = ctx.store.user(ctx.userKey)
     const warningCount = isGroupJid(ctx.jid) ? ctx.store.warnCount(ctx.jid, ctx.userKey) : 0
     return ctx.reply(
-      `👤 ${ctx.sender}\nAFK: ${user.afk ? 'aktif' : 'tidak aktif'}\nWarnings (chat ini): ${warningCount}`
+      `👤 ${safeIdentity(ctx.sender)}\nAFK: ${user.afk ? 'aktif' : 'tidak aktif'}\nWarnings (chat ini): ${warningCount}`
     )
   }),
 
@@ -876,13 +891,21 @@ export const COMMANDS = [
       : participant.admin === 'admin'
         ? 'admin'
         : 'member'
-    const lines = [
-      `JID: ${participant.id || '-'}`,
-      `Phone: ${participant.phoneNumber || '-'}`,
-      `LID: ${participant.lid || '-'}`,
+
+    if (ctx.args[0]?.toLowerCase() === 'full') {
+      await requireOwner(ctx)
+      return ctx.reply([
+        `JID: ${participant.id || '-'}`,
+        `Phone: ${participant.phoneNumber || '-'}`,
+        `LID: ${participant.lid || '-'}`,
+        `Role: ${roles}`
+      ].join('\\n'))
+    }
+
+    return ctx.reply([
+      `Identity: ${safeIdentity(participant.phoneNumber || participant.id || participant.lid)}`,
       `Role: ${roles}`
-    ]
-    return ctx.reply(lines.join('\\n'))
+    ].join('\\n'))
   }),
 
   command('sticker', ['s', 'stiker'], 'Media', 'Ubah gambar menjadi sticker.', async ctx => {

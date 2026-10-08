@@ -1,12 +1,13 @@
 {
   "name": "nexa-whatsapp-bot",
-  "version": "3.9.0",
+  "version": "3.9.1",
   "private": true,
   "type": "module",
   "description": "Nexa — modular all-in-one WhatsApp bot powered by Baileys.",
   "engines": {
     "node": ">=20.0.0"
   },
+  "packageManager": "npm@10.9.2",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",

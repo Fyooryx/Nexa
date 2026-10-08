@@ -13,7 +13,10 @@ COPY src ./src
 COPY start.sh ./
 
 RUN mkdir -p /app/runtime/auth_info /app/runtime/data \
+    && chown -R node:node /app/runtime \
     && chmod 755 /app/start.sh
+
+USER node
 
 VOLUME ["/app/runtime"]
 

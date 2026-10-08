@@ -9,6 +9,7 @@ const defaults = {
 
 function normalizeGroup(value) {
   return {
+    lastSeenAt: Number(value?.lastSeenAt || Date.now()),
     prefix: typeof value?.prefix === 'string' && value.prefix.length <= 3 ? value.prefix : null,
     antilink: Boolean(value?.antilink),
     welcome: Boolean(value?.welcome),
@@ -73,15 +74,39 @@ export class JsonStore {
 
   group(jid) {
     if (!this.data.groups[jid]) this.data.groups[jid] = normalizeGroup({})
+    this.data.groups[jid].lastSeenAt = Date.now()
     return this.data.groups[jid]
   }
 
   user(jid) {
-    this.data.users[jid] ??= { afk: null, messages: 0 }
+    this.data.users[jid] ??= { afk: null, messages: 0, lastSeenAt: Date.now() }
+    this.data.users[jid].lastSeenAt = Date.now()
     this.data.users[jid].warnings ??= {}
     this.data.users[jid].aiHistory ??= []
     this.data.users[jid].messages = Number(this.data.users[jid].messages || 0)
     return this.data.users[jid]
+  }
+
+  pruneUsers(maxUsers = 50000) {
+    const entries = Object.entries(this.data.users || {})
+    const limit = Math.max(1, Number(maxUsers) || 50000)
+    if (entries.length <= limit) return 0
+
+    entries.sort(([, a], [, b]) => Number(a?.lastSeenAt || 0) - Number(b?.lastSeenAt || 0))
+    const removeCount = entries.length - limit
+    for (const [jid] of entries.slice(0, removeCount)) delete this.data.users[jid]
+    return removeCount
+  }
+
+  pruneGroups(maxGroups = 10000) {
+    const entries = Object.entries(this.data.groups || {})
+    const limit = Math.max(1, Number(maxGroups) || 10000)
+    if (entries.length <= limit) return 0
+
+    entries.sort(([, a], [, b]) => Number(a?.lastSeenAt || 0) - Number(b?.lastSeenAt || 0))
+    const removeCount = entries.length - limit
+    for (const [jid] of entries.slice(0, removeCount)) delete this.data.groups[jid]
+    return removeCount
   }
 
   canonicalUser(preferred, alternate = null) {
