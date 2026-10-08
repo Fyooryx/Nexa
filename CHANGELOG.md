@@ -14,8 +14,8 @@
 - persistent JSON state can no longer grow without an explicit configured bound
 - oversized media is rejected before the full payload is buffered
 
-### Deferred
-- deterministic `package-lock.json` generation is still required for full `npm ci` reproducibility
+### Security dependency update
+- upgraded `sharp` to 0.35.5 to address high-severity inherited libvips/libheif/librsvg vulnerabilities
 
 
 ## 3.9.0 — Operational hardening
@@ -32,7 +32,7 @@
 ### Operations
 - `/healthz` remains public liveness
 - `/readyz` remains connection-aware readiness
-- `/metrics` is public only when `METRICS_TOKEN` is empty
+- `/metrics` rejects unauthenticated access when `METRICS_TOKEN` is empty
 
 
 ## 3.8.0 — Dependency resilience
