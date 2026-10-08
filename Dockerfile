@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim
+FROM node:24-bookworm-slim
 
 ENV NODE_ENV=production \
     AUTH_DIR=/app/runtime/auth_info \
@@ -6,7 +6,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
 COPY src ./src
