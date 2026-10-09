@@ -1,9 +1,15 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.10.0**  
+**Current version: 3.11.0**  
 **Owner: Vyrael**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+
+## 3.11.0 keyword escalation safety and owner setup diagnostics
+
+- Keyword-filter warnings remain persisted when message deletion or participant removal fails.
+- Member removal is validated before warning history is reset or success is announced.
+- `.diagnose` now reports whether owner authorization is configured without displaying the configured number.
 
 ## 3.10.0 actionable diagnostics
 
