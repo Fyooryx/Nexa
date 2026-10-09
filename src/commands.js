@@ -118,6 +118,10 @@ export const COMMANDS = [
       `Auth: ${snapshot.authMode}`,
       `Bot identity: ${snapshot.connected ? safeIdentity(ctx.sock.user?.id) : 'not connected'}`,
       `Pairing number: ${pairing}`,
+      `Owner authorization: ${ctx.config.ownerNumber ? 'configured' : 'not configured'}`,
+      ...(!ctx.config.ownerNumber ? [
+        'Owner setup: set OWNER_NUMBER to an active WhatsApp number you control; the number is never displayed.'
+      ] : []),
       `Groups: ${snapshot.counters.groups}`,
       `Users: ${snapshot.counters.users}`,
       `Messages: ${snapshot.counters.messages}`,
