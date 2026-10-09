@@ -136,7 +136,7 @@ LID: ${lid || '-'}`)
 LID: ${safeIdentity(lid)}`)
   }),
 
-  command('menu', ['help', 'start'], 'General', 'Tampilkan semua fitur.', async ctx => {
+  command('menu', ['start'], 'General', 'Tampilkan semua fitur.', async ctx => {
     const groups = new Map()
     for (const item of COMMANDS) {
       if (!groups.has(item.category)) groups.set(item.category, [])
@@ -642,7 +642,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     return ctx.sock.sendMessage(ctx.jid, { text, mentions })
   }),
 
-  command('tagadmin', ['admins'], 'Group', 'Mention semua admin grup.', async ctx => {
+  command('tagadmin', [], 'Group', 'Mention semua admin grup.', async ctx => {
     const meta = await requireGroup(ctx)
     const mentions = [...adminSet(meta)]
     if (!mentions.length) return ctx.reply('Tidak ada admin yang terdeteksi.')
