@@ -109,8 +109,8 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 })
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
-  assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.9.6')
+  assert.equal(config.ownerName, 'Vyrael')
+  assert.equal(config.botVersion, '3.9.7')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -151,17 +151,17 @@ test('Railway config explicitly selects the Dockerfile worker and liveness healt
 
 import { healthSnapshot, formatHealth } from '../src/health.js'
 
-test('health snapshot exposes Kyren owner and runtime counters', () => {
+test('health snapshot exposes Vyrael owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '3.9.1', ownerName: 'Kyren' },
+    config: { botName: 'Nexa', botVersion: '3.9.1', ownerName: 'Vyrael' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
   assert.equal(snapshot.owner, 'Kyren')
   assert.equal(snapshot.connected, true)
   assert.equal(snapshot.counters.messages, 4)
-  assert.match(formatHealth(snapshot), /Owner: Kyren/)
+  assert.match(formatHealth(snapshot), /Owner: Vyrael/)
 })
 
 test('CommandRegistry rejects alias collisions', () => {
