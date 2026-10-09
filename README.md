@@ -1,9 +1,15 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.9.9**  
+**Current version: 3.10.0**  
 **Owner: Vyrael**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+
+## 3.10.0 actionable diagnostics
+
+- `.diagnose` now adds a next action based on WhatsApp connection and authentication mode.
+- Health, authentication, and multi-line command output now use actual line breaks rather than literal escaped sequences.
+- For hosted pairing, configure `PAIRING_NUMBER` only with a WhatsApp account you control; never share a pairing code.
 
 ## 3.9.9 owner TikTok profile correction
 
