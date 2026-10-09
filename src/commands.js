@@ -695,20 +695,29 @@ Sender: ${safeIdentity(ctx.sender)}`)
 
     if (count >= config.warnLimit) {
       await requireBotAdmin(ctx, meta)
+      const failureMessage = `⚠️ @${numberFromJid(target)} mencapai batas warning, tetapi pengeluaran gagal.`
+      let removalResult
+
+      try {
+        removalResult = await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
+      } catch {
+        return ctx.reply(failureMessage, { mentions: [target] })
+      }
+
+      if (
+        !Array.isArray(removalResult) ||
+        removalResult.length !== 1 ||
+        String(removalResult[0]?.status) !== '200'
+      ) {
+        return ctx.reply(failureMessage, { mentions: [target] })
+      }
+
       ctx.store.resetWarn(ctx.jid, userKey)
       await ctx.store.persist()
-      try {
-        await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
-        return ctx.reply(
-          `⛔ @${numberFromJid(target)} mencapai batas warning (${config.warnLimit}) dan diproses untuk dikeluarkan.`,
-          { mentions: [target] }
-        )
-      } catch {
-        return ctx.reply(
-          `⚠️ @${numberFromJid(target)} mencapai batas warning, tetapi pengeluaran gagal.`,
-          { mentions: [target] }
-        )
-      }
+      return ctx.reply(
+        `⛔ @${numberFromJid(target)} mencapai batas warning (${config.warnLimit}) dan berhasil dikeluarkan.`,
+        { mentions: [target] }
+      )
     }
 
     return ctx.reply(
