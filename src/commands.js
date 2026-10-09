@@ -195,7 +195,7 @@ LID: ${safeIdentity(lid)}`)
     if (config.ownerNumber) lines.push(`WhatsApp: https://wa.me/${config.ownerNumber}`)
     if (config.ownerEmail) lines.push(`Email: ${config.ownerEmail}`)
     if (config.ownerTikTok) lines.push(`TikTok: https://www.tiktok.com/@${config.ownerTikTok}`)
-    return ctx.reply(lines.join('\\n'))
+    return ctx.reply(lines.join('\n'))
   }),
 
   command('id', ['jid'], 'General', 'Tampilkan identitas chat dan sender.', async ctx => {
