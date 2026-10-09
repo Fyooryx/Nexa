@@ -109,8 +109,8 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 })
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
-  assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.9.6')
+  assert.equal(config.ownerName, 'Vyrael')
+  assert.equal(config.botVersion, '3.9.7')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -119,19 +119,50 @@ test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.maxStoredGroups, 10000)
 })
 
+
+test('Vyrael owner profile defaults contain the requested public contact details', () => {
+  assert.equal(config.ownerName, 'Vyrael')
+  assert.equal(config.ownerEmail, 'zavriel.studio@gmail.com')
+  assert.equal(config.ownerTikTok, 'zavriel.ud')
+})
+
+test('owner command displays the public contact card to all users', async () => {
+  const { COMMANDS } = await import('../src/commands.js')
+  const owner = COMMANDS.find(command => command.name === 'owner')
+  const replies = []
+  await owner.run({
+    isOwner: false,
+    reply: async text => { replies.push(text) }
+  })
+
+  assert.match(replies[0], /Owner: Vyrael/)
+  assert.match(replies[0], /Email: zavriel\.studio@gmail\.com/)
+  assert.match(replies[0], /TikTok:.*zavriel\.ud/)
+  assert.ok(replies[0].includes('\n'), 'contact details should be separated onto multiple lines')
+})
+
+test('Railway config explicitly selects the Dockerfile worker and liveness healthcheck', async () => {
+  const source = await readFile(new URL('../railway.json', import.meta.url), 'utf8')
+  const railway = JSON.parse(source)
+  assert.equal(railway.build.builder, 'DOCKERFILE')
+  assert.equal(railway.build.dockerfilePath, 'Dockerfile')
+  assert.equal(railway.deploy.healthcheckPath, '/healthz')
+  assert.equal(railway.deploy.restartPolicyType, 'ALWAYS')
+})
+
 import { healthSnapshot, formatHealth } from '../src/health.js'
 
-test('health snapshot exposes Kyren owner and runtime counters', () => {
+test('health snapshot exposes Vyrael owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
     store: { data: { groups: { 'g@g.us': {} }, users: { 'u@s.whatsapp.net': {} }, meta: { messages: 4, commands: 2 } } },
-    config: { botName: 'Nexa', botVersion: '3.9.1', ownerName: 'Kyren' },
+    config: { botName: 'Nexa', botVersion: '3.9.1', ownerName: 'Vyrael' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
-  assert.equal(snapshot.owner, 'Kyren')
+  assert.equal(snapshot.owner, 'Vyrael')
   assert.equal(snapshot.connected, true)
   assert.equal(snapshot.counters.messages, 4)
-  assert.match(formatHealth(snapshot), /Owner: Kyren/)
+  assert.match(formatHealth(snapshot), /Owner: Vyrael/)
 })
 
 test('CommandRegistry rejects alias collisions', () => {

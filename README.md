@@ -1,9 +1,16 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.9.6**  
-**Owner: Kyren**
+**Current version: 3.9.7**  
+**Owner: Vyrael**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+
+## 3.9.7 owner contact and Railway deployment configuration
+
+- owner identity defaults to Vyrael
+- `.owner` displays the configured WhatsApp link, email, and TikTok contact
+- email and TikTok are configurable through `OWNER_EMAIL` and `OWNER_TIKTOK`
+- Railway config-as-code explicitly pins the Dockerfile builder and `/healthz` liveness check
 
 ## 3.9.6 manual warning and command registry fixes
 
@@ -112,8 +119,10 @@ Edit `.env` before starting:
 
 ```text
 BOT_NAME=Nexa
-OWNER_NAME=Kyren
+OWNER_NAME=Vyrael
 OWNER_NUMBER=628xxxxxxxxxx
+OWNER_EMAIL=zavriel.studio@gmail.com
+OWNER_TIKTOK=zavriel.ud
 PAIRING_NUMBER=628xxxxxxxxxx
 ```
 
@@ -377,8 +386,10 @@ Copy `.env.example` to `.env`.
 Important settings:
 
 - `BOT_NAME`: bot display name
-- `OWNER_NAME`: owner display name; defaults to `Kyren`
-- `OWNER_NUMBER`: owner number, digits only
+- `OWNER_NAME`: owner display name; defaults to `Vyrael`
+- `OWNER_NUMBER`: active WhatsApp number allowed to use owner-only commands, digits only
+- `OWNER_EMAIL`: public owner email shown by `.owner`
+- `OWNER_TIKTOK`: TikTok username shown by `.owner`, with or without leading `@`
 - `PAIRING_NUMBER`: bot account number for pairing-code mode; currently configured in `.env.example`
 - `PREFIX`: global command prefix
 - `COMMAND_COOLDOWN_MS` / `MAX_COMMANDS_PER_WINDOW`: command throttling

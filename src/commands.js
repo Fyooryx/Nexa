@@ -190,12 +190,12 @@ LID: ${safeIdentity(lid)}`)
     return ctx.reply(formatHealth(healthSnapshot(ctx)))
   }),
 
-  command('owner', ['creator'], 'General', 'Tampilkan identitas owner Nexa.', async ctx => {
-    if (ctx.isOwner && config.ownerNumber) {
-      return ctx.reply(`👑 Owner: ${config.ownerName}
-https://wa.me/${config.ownerNumber}`)
-    }
-    return ctx.reply(`👑 Owner: ${config.ownerName}`)
+  command('owner', ['creator'], 'General', 'Tampilkan identitas dan kontak owner Nexa.', async ctx => {
+    const lines = [`👑 Owner: ${config.ownerName}`]
+    if (config.ownerNumber) lines.push(`WhatsApp: https://wa.me/${config.ownerNumber}`)
+    if (config.ownerEmail) lines.push(`Email: ${config.ownerEmail}`)
+    if (config.ownerTikTok) lines.push(`TikTok: https://www.tiktok.com/@${config.ownerTikTok}`)
+    return ctx.reply(lines.join('\n'))
   }),
 
   command('id', ['jid'], 'General', 'Tampilkan identitas chat dan sender.', async ctx => {

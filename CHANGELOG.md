@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.9.7 — Vyrael owner profile and Railway builder configuration
+
+### Added
+- `.owner` displays the configured public WhatsApp contact, email, and TikTok profile.
+- Added configurable `OWNER_EMAIL` and `OWNER_TIKTOK` settings.
+
+### Fixed
+- Default owner branding now uses Vyrael.
+- Added explicit Railway config-as-code for the Dockerfile builder, persistent-worker restart policy, and `/healthz` health check to resolve conflicting builder configuration evidence.
+
 ## 3.9.6 — manual warning state and command registry
 
 ### Fixed
