@@ -333,6 +333,47 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(addKeyword(group, 'overflow-a'), false)
 })
 
+test('anti-flood stops message processing when moderation fails', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+  const start = source.indexOf('if (!isCommand && group.antiflood) {')
+  const end = source.indexOf('\n    if (group.filterEnabled && !isCommand)', start)
+
+  assert.ok(start >= 0 && end > start, 'anti-flood block should be identifiable')
+  const block = source.slice(start, end)
+  const catchIndex = block.lastIndexOf('} catch (error) {')
+  assert.ok(catchIndex >= 0, 'anti-flood should handle failures')
+
+  const catchBlock = block.slice(catchIndex)
+  assert.match(
+    catchBlock,
+    /logger\.(?:warn|error)\(\{ err: error \}, 'anti-flood handler failed[^']*'\)\s*return\s*\n\s*\}/,
+    'anti-flood errors must be logged and stop processing of this message'
+  )
+  assert.doesNotMatch(
+    block,
+    /\.catch\(\(\) => \{\}\)/,
+    'anti-flood moderation actions must not silently swallow failures'
+  )
+
+  const persistBeforeRemoval = block.indexOf('await store.persist()')
+  const removal = block.indexOf("await sock.groupParticipantsUpdate(jid, [sender], 'remove')")
+  const reset = block.indexOf('store.resetWarn(jid, userKey)')
+  const persistAfterReset = block.indexOf('await store.persist()', reset)
+  const successAnnouncement = block.indexOf('mencapai batas warning karena anti-flood')
+  assert.ok(
+    persistBeforeRemoval >= 0 && removal > persistBeforeRemoval,
+    'warning count must be persisted before attempting removal'
+  )
+  assert.ok(
+    reset > removal && persistAfterReset > reset,
+    'warning state must only reset after removal succeeds and then be persisted'
+  )
+  assert.ok(
+    successAnnouncement > removal,
+    'removal success must not be announced before the removal operation'
+  )
+})
+
 test('keyword filter stops message processing when moderation fails', async () => {
   const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
   const start = source.indexOf('if (group.filterEnabled && !isCommand) {')
