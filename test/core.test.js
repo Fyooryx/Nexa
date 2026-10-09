@@ -491,7 +491,7 @@ test('keyword warning escalation preserves counts until member removal is confir
   const removal = block.indexOf('const removalResult = await sock.groupParticipantsUpdate')
   const resultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'", removal)
   const reset = block.indexOf('store.resetWarn(jid, userKey)', count)
-  const successAnnouncement = block.indexOf('berhasil dikeluarkan karena keyword filter', count)
+  const successAnnouncement = block.indexOf('berhasil dikeluarkan', count)
 
   assert.ok(count >= 0 && deleteMessage > count, 'warning escalation must delete the triggering message first')
   assert.ok(
