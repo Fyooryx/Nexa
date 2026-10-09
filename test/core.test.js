@@ -195,6 +195,8 @@ test('diagnose recommends an actionable next step for QR-mode deployments', asyn
   assert.ok(replies[0].includes('\n'), 'diagnostic fields must be separated by real newlines')
   assert.match(replies[0], /Next action:/)
   assert.match(replies[0], /interactive terminal|PAIRING_NUMBER/)
+  assert.match(replies[0], /Owner authorization: not configured/)
+  assert.match(replies[0], /OWNER_NUMBER/)
 })
 
 test('health snapshot exposes Vyrael owner and runtime counters', () => {
@@ -472,6 +474,37 @@ test('keyword filter stops message processing when moderation fails', async () =
     block,
     /sendMessage\(jid, \{ delete: message\.key \}\)\.catch\(\(\) => \{\}\)/,
     'moderation deletion failures must reach the fail-closed handler'
+  )
+})
+
+
+test('keyword warning escalation preserves counts until member removal is confirmed', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+  const start = source.indexOf('if (group.filterEnabled && !isCommand) {')
+  const end = source.indexOf('\n    const mentioned = extractMentions', start)
+  assert.ok(start >= 0 && end > start, 'keyword filter block should be identifiable')
+
+  const block = source.slice(start, end)
+  const count = block.indexOf('const count = store.addWarn')
+  const deleteMessage = block.indexOf('await sock.sendMessage(jid, { delete: message.key })', count)
+  const persistBeforeDelete = block.lastIndexOf('await store.persist()', deleteMessage)
+  const removal = block.indexOf('const removalResult = await sock.groupParticipantsUpdate')
+  const resultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'", removal)
+  const reset = block.indexOf('store.resetWarn(jid, userKey)', count)
+  const successAnnouncement = block.indexOf('berhasil dikeluarkan karena keyword filter', count)
+
+  assert.ok(count >= 0 && deleteMessage > count, 'warning escalation must delete the triggering message first')
+  assert.ok(
+    persistBeforeDelete >= 0 && persistBeforeDelete < deleteMessage,
+    'threshold warnings must be persisted before moderation side effects'
+  )
+  assert.ok(
+    removal > deleteMessage && resultCheck > removal && reset > resultCheck,
+    'warning state must only reset after participant removal returns status 200'
+  )
+  assert.ok(
+    successAnnouncement > resultCheck && successAnnouncement > removal,
+    'success must only be announced after confirmed removal'
   )
 })
 
