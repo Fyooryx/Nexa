@@ -347,14 +347,23 @@ async function handleIncoming(sock, message) {
             const count = store.addWarn(jid, userKey, `keyword filter: ${matched}`)
             if (count >= config.warnLimit) {
               if (isBotAdmin(sock, meta)) {
+                // Keep the threshold warning durable if deleting or removing fails.
+                await store.persist()
                 await sock.sendMessage(jid, { delete: message.key })
+                const removalResult = await sock.groupParticipantsUpdate(jid, [sender], 'remove')
+                if (
+                  !Array.isArray(removalResult)
+                  || removalResult.length !== 1
+                  || String(removalResult[0]?.status) !== '200'
+                ) {
+                  throw new Error('KEYWORD_FILTER_REMOVE_FAILED')
+                }
                 store.resetWarn(jid, userKey)
                 await store.persist()
                 await sock.sendMessage(jid, {
-                  text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) karena filter grup dan diproses untuk dikeluarkan.`,
+                  text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) karena filter grup dan berhasil dikeluarkan.`,
                   mentions: [sender]
                 })
-                await sock.groupParticipantsUpdate(jid, [sender], 'remove')
               } else {
                 await store.persist()
                 await sock.sendMessage(jid, {

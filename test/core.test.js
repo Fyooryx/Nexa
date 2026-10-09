@@ -60,8 +60,19 @@ test('JsonStore initializes and persists normalized group state', async () => {
   }
 })
 
-import { participantMatches, adminSet } from '../src/metadata.js'
+import * as metadata from '../src/metadata.js'
 import { MediaTooLargeError, parseCommand, targetFromContext } from '../src/utils.js'
+
+test('participant removal success requires one status-200 result', () => {
+  assert.equal(typeof metadata.isConfirmedSingleParticipantUpdate, 'function')
+  const succeeded = metadata.isConfirmedSingleParticipantUpdate
+  assert.equal(succeeded([{ status: '200', jid: 'user@s.whatsapp.net' }]), true)
+  assert.equal(succeeded([{ status: 200, jid: 'user@s.whatsapp.net' }]), true)
+  assert.equal(succeeded([{ status: '403', jid: 'user@s.whatsapp.net' }]), false)
+  assert.equal(succeeded([]), false)
+  assert.equal(succeeded([{ status: '200' }, { status: '200' }]), false)
+  assert.equal(succeeded(null), false)
+})
 
 test('LID-aware participant matching recognizes id, phoneNumber and lid', () => {
   const participant = {
@@ -70,9 +81,9 @@ test('LID-aware participant matching recognizes id, phoneNumber and lid', () => 
     lid: '12345@lid',
     admin: 'admin'
   }
-  assert.equal(participantMatches(participant, '12345@lid'), true)
-  assert.equal(participantMatches(participant, '628123456789@s.whatsapp.net'), true)
-  assert.equal(adminSet({ participants: [participant] }).has('12345@lid'), true)
+  assert.equal(metadata.participantMatches(participant, '12345@lid'), true)
+  assert.equal(metadata.participantMatches(participant, '628123456789@s.whatsapp.net'), true)
+  assert.equal(metadata.adminSet({ participants: [participant] }).has('12345@lid'), true)
 })
 
 test('parseCommand honors per-chat prefix', () => {
@@ -110,7 +121,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Vyrael')
-  assert.equal(config.botVersion, '3.10.0')
+  assert.equal(config.botVersion, '3.11.0')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -153,7 +164,7 @@ import { healthSnapshot, formatHealth } from '../src/health.js'
 test('formatHealth renders actual line breaks between health fields', () => {
   const formatted = formatHealth({
     bot: 'Nexa',
-    version: '3.10.0',
+    version: '3.11.0',
     owner: 'Vyrael',
     connection: 'open',
     authMode: 'saved-session',
@@ -177,7 +188,7 @@ test('diagnose recommends an actionable next step for QR-mode deployments', asyn
   const ctx = {
     sock: { user: null },
     store: { data: { meta: { messages: 0, commands: 0 }, groups: {}, users: {} } },
-    config: { botName: 'Nexa', botVersion: '3.10.0', ownerName: 'Vyrael', pairingNumber: '' },
+    config: { botName: 'Nexa', botVersion: '3.11.0', ownerName: 'Vyrael', pairingNumber: '' },
     runtimeState: {
       connection: 'connecting',
       connectedAt: null,
@@ -195,6 +206,8 @@ test('diagnose recommends an actionable next step for QR-mode deployments', asyn
   assert.ok(replies[0].includes('\n'), 'diagnostic fields must be separated by real newlines')
   assert.match(replies[0], /Next action:/)
   assert.match(replies[0], /interactive terminal|PAIRING_NUMBER/)
+  assert.match(replies[0], /Owner authorization: not configured/)
+  assert.match(replies[0], /OWNER_NUMBER/)
 })
 
 test('health snapshot exposes Vyrael owner and runtime counters', () => {
@@ -475,6 +488,37 @@ test('keyword filter stops message processing when moderation fails', async () =
   )
 })
 
+
+test('keyword warning escalation preserves counts until member removal is confirmed', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+  const start = source.indexOf('if (group.filterEnabled && !isCommand) {')
+  const end = source.indexOf('\n    const mentioned = extractMentions', start)
+  assert.ok(start >= 0 && end > start, 'keyword filter block should be identifiable')
+
+  const block = source.slice(start, end)
+  const count = block.indexOf('const count = store.addWarn')
+  const deleteMessage = block.indexOf('await sock.sendMessage(jid, { delete: message.key })', count)
+  const persistBeforeDelete = block.lastIndexOf('await store.persist()', deleteMessage)
+  const removal = block.indexOf('const removalResult = await sock.groupParticipantsUpdate')
+  const resultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'", removal)
+  const reset = block.indexOf('store.resetWarn(jid, userKey)', count)
+  const successAnnouncement = block.indexOf('berhasil dikeluarkan', count)
+
+  assert.ok(count >= 0 && deleteMessage > count, 'warning escalation must delete the triggering message first')
+  assert.ok(
+    persistBeforeDelete >= 0 && persistBeforeDelete < deleteMessage,
+    'threshold warnings must be persisted before moderation side effects'
+  )
+  assert.ok(
+    removal > deleteMessage && resultCheck > removal && reset > resultCheck,
+    'warning state must only reset after participant removal returns status 200'
+  )
+  assert.ok(
+    successAnnouncement > resultCheck && successAnnouncement > removal,
+    'success must only be announced after confirmed removal'
+  )
+})
+
 test('JsonStore counts a command once, not twice', async () => {
   const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-counter-')))
   try {
@@ -546,6 +590,50 @@ test('commands exposes authstatus and canonical self-state uses userKey', async 
   assert.doesNotMatch(source, /const user = ctx\.store\.user\(ctx\.sender\)/)
 })
 
+
+
+test('kick, promote and demote do not report success on non-200 results', async () => {
+  const { COMMANDS } = await import('../src/commands.js')
+  const jid = '120363000000000000@g.us'
+  const sender = '628111111111@s.whatsapp.net'
+  const bot = '628222222222@s.whatsapp.net'
+  const target = '628333333333@s.whatsapp.net'
+
+  for (const name of ['kick', 'promote', 'demote']) {
+    const targetAdmin = name === 'demote'
+    const meta = {
+      id: jid,
+      participants: [
+        { id: sender, admin: 'superadmin' },
+        { id: bot, admin: 'admin' },
+        { id: target, ...(targetAdmin ? { admin: 'admin' } : {}) }
+      ]
+    }
+    const replies = []
+    const command = COMMANDS.find(item => item.name === name)
+    await command.run({
+      jid,
+      sender,
+      senderAlt: null,
+      text: '@628333333333',
+      args: ['@628333333333'],
+      message: {
+        message: {
+          extendedTextMessage: { contextInfo: { mentionedJid: [target] } }
+        }
+      },
+      sock: {
+        user: { id: bot },
+        groupMetadata: async () => meta,
+        groupParticipantsUpdate: async () => [{ status: '500', jid: target }]
+      },
+      reply: async text => { replies.push(text) }
+    })
+
+    assert.match(replies.at(-1), /gagal/i, name + ' must report that WhatsApp did not confirm the action')
+    assert.doesNotMatch(replies.at(-1), /berhasil|diproses untuk dikeluarkan|dipromosikan|didemote/i)
+  }
+})
 
 async function createManualWarnFixture() {
   const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-manual-warn-')))
