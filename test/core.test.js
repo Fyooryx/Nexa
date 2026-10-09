@@ -159,7 +159,7 @@ test('health snapshot exposes Vyrael owner and runtime counters', () => {
     config: { botName: 'Nexa', botVersion: '3.9.1', ownerName: 'Vyrael' },
     runtimeState: { connection: 'open', connectedAt: 1, lastDisconnectedAt: null, lastDisconnectCode: null, reconnects: 0 }
   })
-  assert.equal(snapshot.owner, 'Kyren')
+  assert.equal(snapshot.owner, 'Vyrael')
   assert.equal(snapshot.connected, true)
   assert.equal(snapshot.counters.messages, 4)
   assert.match(formatHealth(snapshot), /Owner: Vyrael/)
