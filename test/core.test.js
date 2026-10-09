@@ -340,6 +340,7 @@ test('anti-flood stops message processing when moderation fails', async () => {
 
   assert.ok(start >= 0 && end > start, 'anti-flood block should be identifiable')
   const block = source.slice(start, end)
+  assert.match(block, /if \(!meta\?\.participants\) return/, 'missing group metadata must stop anti-flood processing')
   const catchIndex = block.lastIndexOf('} catch (error) {')
   assert.ok(catchIndex >= 0, 'anti-flood should handle failures')
 
@@ -356,7 +357,8 @@ test('anti-flood stops message processing when moderation fails', async () => {
   )
 
   const persistBeforeRemoval = block.indexOf('await store.persist()')
-  const removal = block.indexOf("await sock.groupParticipantsUpdate(jid, [sender], 'remove')")
+  const removal = block.indexOf('await sock.groupParticipantsUpdate(jid, [sender], \'remove\')')
+  const removalResultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'")
   const reset = block.indexOf('store.resetWarn(jid, userKey)')
   const persistAfterReset = block.indexOf('await store.persist()', reset)
   const successAnnouncement = block.indexOf('mencapai batas warning karena anti-flood')
@@ -365,12 +367,12 @@ test('anti-flood stops message processing when moderation fails', async () => {
     'warning count must be persisted before attempting removal'
   )
   assert.ok(
-    reset > removal && persistAfterReset > reset,
-    'warning state must only reset after removal succeeds and then be persisted'
+    removalResultCheck > removal && reset > removalResultCheck && persistAfterReset > reset,
+    'warning state must only reset after a successful removal response and then be persisted'
   )
   assert.ok(
-    successAnnouncement > removal,
-    'removal success must not be announced before the removal operation'
+    successAnnouncement > removalResultCheck,
+    'removal success must not be announced before a successful removal response'
   )
 })
 
