@@ -110,7 +110,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Vyrael')
-  assert.equal(config.botVersion, '3.10.0')
+  assert.equal(config.botVersion, '3.11.0')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -153,7 +153,7 @@ import { healthSnapshot, formatHealth } from '../src/health.js'
 test('formatHealth renders actual line breaks between health fields', () => {
   const formatted = formatHealth({
     bot: 'Nexa',
-    version: '3.10.0',
+    version: '3.11.0',
     owner: 'Vyrael',
     connection: 'open',
     authMode: 'saved-session',
@@ -177,7 +177,7 @@ test('diagnose recommends an actionable next step for QR-mode deployments', asyn
   const ctx = {
     sock: { user: null },
     store: { data: { meta: { messages: 0, commands: 0 }, groups: {}, users: {} } },
-    config: { botName: 'Nexa', botVersion: '3.10.0', ownerName: 'Vyrael', pairingNumber: '' },
+    config: { botName: 'Nexa', botVersion: '3.11.0', ownerName: 'Vyrael', pairingNumber: '' },
     runtimeState: {
       connection: 'connecting',
       connectedAt: null,
