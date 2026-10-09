@@ -78,6 +78,26 @@ async function findMedia(ctx, type) {
   return quotedMedia?.type === type ? quotedMedia.node : null
 }
 
+function diagnosticNextAction(snapshot) {
+  if (snapshot.connected) {
+    return 'Next action: no authentication action needed; WhatsApp is connected.'
+  }
+
+  if (snapshot.authMode === 'qr') {
+    return 'Next action: for hosted deployment, configure PAIRING_NUMBER for an account you control; QR scanning requires an interactive terminal.'
+  }
+
+  if (snapshot.authMode === 'pairing-code') {
+    return 'Next action: verify the WhatsApp account can receive a linking code, then inspect pairing-code request errors. Never share the code.'
+  }
+
+  if (snapshot.authMode === 'saved-session') {
+    return 'Next action: confirm AUTH_DIR is on persistent storage and inspect the last disconnect code and reconnect logs.'
+  }
+
+  return 'Next action: inspect startup/auth logs and verify AUTH_DIR plus pairing settings.'
+}
+
 function formatList(title, items) {
   return [`*${title}*`, ...items.map(item => `• ${item}`)].join('\n')
 }
@@ -103,9 +123,11 @@ export const COMMANDS = [
       `Messages: ${snapshot.counters.messages}`,
       `Commands: ${snapshot.counters.commands}`,
       `Reconnects: ${snapshot.reconnects}`,
+      `Last disconnect code: ${snapshot.lastDisconnectCode ?? 'none'}`,
       `Memory RSS: ${snapshot.memory.rssMb} MB`,
-      `Metadata cache: ${snapshot.metadataCacheSize}`
-    ].join('\\n'))
+      `Metadata cache: ${snapshot.metadataCacheSize}`,
+      diagnosticNextAction(snapshot)
+    ].join('\n'))
   }),
 
   command('authstatus', ['auth'], 'General', 'Tampilkan mode autentikasi Nexa saat ini.', async ctx => {
@@ -120,7 +142,7 @@ export const COMMANDS = [
         `🔐 Auth: ${modeLabel}`,
         `Connected: ${ctx.sock.user ? 'yes' : 'no'}`,
         `Bot identity: ${safeIdentity(identity)}`
-      ].join('\\n')
+      ].join('\n')
     )
   }),
 
@@ -416,7 +438,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
       `Circuit: ${stateLabel}`,
       `Failures: ${status.failures}/${config.ai.circuitFailureThreshold}`,
       `Retries: ${config.ai.maxRetries}`
-    ].join('\\n'))
+    ].join('\n'))
   }),
 
   command('aiclear', ['resetai'], 'AI', 'Hapus memory percakapan AI milikmu.', async ctx => {
@@ -567,7 +589,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
 
     if (action === 'status' || !action) {
       return ctx.reply(
-        `Anti-flood: ${group.antiflood ? 'ON' : 'OFF'}\\nLimit: ${group.floodMax} pesan / ${Math.round(group.floodWindowMs / 1000)}s\\nMode: ${group.floodMode}`
+        `Anti-flood: ${group.antiflood ? 'ON' : 'OFF'}\nLimit: ${group.floodMax} pesan / ${Math.round(group.floodWindowMs / 1000)}s\nMode: ${group.floodMode}`
       )
     }
 
@@ -809,7 +831,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     return ctx.reply(requests.map((item, i) => {
       const jid = item.jid || item.id || item.lid || ''
       return `${i + 1}. ${jid}`
-    }).join('\\n'))
+    }).join('\n'))
   }),
 
   command('approve', [], 'Group', 'Setujui join request.', async ctx => {
@@ -818,7 +840,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     const targets = ctx.args.filter(Boolean)
     if (!targets.length) return ctx.reply(`Pakai: ${ctx.prefix}approve <jid> [...]`)
     const results = await ctx.sock.groupRequestParticipantsUpdate(ctx.jid, targets, 'approve')
-    return ctx.reply(results.map(item => `${item.jid}: ${item.status}`).join('\\n'))
+    return ctx.reply(results.map(item => `${item.jid}: ${item.status}`).join('\n'))
   }),
 
   command('reject', [], 'Group', 'Tolak join request.', async ctx => {
@@ -827,7 +849,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     const targets = ctx.args.filter(Boolean)
     if (!targets.length) return ctx.reply(`Pakai: ${ctx.prefix}reject <jid> [...]`)
     const results = await ctx.sock.groupRequestParticipantsUpdate(ctx.jid, targets, 'reject')
-    return ctx.reply(results.map(item => `${item.jid}: ${item.status}`).join('\\n'))
+    return ctx.reply(results.map(item => `${item.jid}: ${item.status}`).join('\n'))
   }),
 
   command('addmode', [], 'Group', 'Atur siapa yang dapat menambahkan anggota.', async ctx => {
@@ -863,7 +885,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     const meta = await requireGroup(ctx)
     const group = settings(ctx)
     return ctx.reply(
-      `*${meta.subject || 'Group'}*\\nPrefix: ${group.prefix || ctx.prefix}\\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\\nAnti-flood: ${group.antiflood ? 'ON' : 'OFF'} (${group.floodMax}/${Math.round(group.floodWindowMs / 1000)}s, ${group.floodMode})\\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\\nFilter: ${group.filterEnabled ? 'ON' : 'OFF'} (${group.filterMode})\\nFilters: ${group.filters.length || 'none'}\\nJoin approval: WhatsApp-managed\\nDisabled commands: ${group.disabledCommands.length || 'none'}`
+      `*${meta.subject || 'Group'}*\nPrefix: ${group.prefix || ctx.prefix}\nAntilink: ${group.antilink ? 'ON' : 'OFF'}\nAnti-flood: ${group.antiflood ? 'ON' : 'OFF'} (${group.floodMax}/${Math.round(group.floodWindowMs / 1000)}s, ${group.floodMode})\nWelcome: ${group.welcome ? 'ON' : 'OFF'}\nGoodbye: ${group.goodbye ? 'ON' : 'OFF'}\nFilter: ${group.filterEnabled ? 'ON' : 'OFF'} (${group.filterMode})\nFilters: ${group.filters.length || 'none'}\nJoin approval: WhatsApp-managed\nDisabled commands: ${group.disabledCommands.length || 'none'}`
     )
   }),
 
@@ -908,13 +930,13 @@ Sender: ${safeIdentity(ctx.sender)}`)
         `Phone: ${participant.phoneNumber || '-'}`,
         `LID: ${participant.lid || '-'}`,
         `Role: ${roles}`
-      ].join('\\n'))
+      ].join('\n'))
     }
 
     return ctx.reply([
       `Identity: ${safeIdentity(participant.phoneNumber || participant.id || participant.lid)}`,
       `Role: ${roles}`
-    ].join('\\n'))
+    ].join('\n'))
   }),
 
   command('sticker', ['s', 'stiker'], 'Media', 'Ubah gambar menjadi sticker.', async ctx => {
@@ -979,7 +1001,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
       lines.push(`Group commands: ${group.stats.commands}`)
       lines.push(`Keyword filter: ${group.filterEnabled ? 'ON' : 'OFF'}`)
     }
-    return ctx.reply(lines.join('\\n'))
+    return ctx.reply(lines.join('\n'))
   }),
 
   command('setgrouppp', ['grouppp'], 'Group', 'Atur foto profil grup dari gambar.', async ctx => {
@@ -1021,7 +1043,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     await requireOwner(ctx)
     const list = await ctx.sock.fetchBlocklist()
     if (!list?.length) return ctx.reply('Blocklist kosong.')
-    return ctx.reply(truncate(list.map((jid, i) => `${i + 1}. ${jid}`).join('\\n'), 10000))
+    return ctx.reply(truncate(list.map((jid, i) => `${i + 1}. ${jid}`).join('\n'), 10000))
   }),
 
   command('status', ['system'], 'Owner', 'Lihat status runtime internal.', async ctx => {
@@ -1038,7 +1060,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
       .map(([jid, meta]) => `${meta.subject || 'Unknown'} — ${jid}`)
       .sort((a, b) => a.localeCompare(b))
     if (!entries.length) return ctx.reply('Nexa tidak sedang berada di grup.')
-    return ctx.reply(truncate(entries.join('\\n'), 10000))
+    return ctx.reply(truncate(entries.join('\n'), 10000))
   }),
 
   command('leave', [], 'Owner', 'Keluarkan Nexa dari grup saat ini.', async ctx => {

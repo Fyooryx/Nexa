@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.10.0 — actionable diagnostics and multiline output
+
+### Added
+- `.diagnose` reports a context-aware next action for the current connection/authentication mode.
+- Reports include the last disconnect code without exposing credentials or configured phone numbers.
+
+### Fixed
+- Corrected literal escaped newline output in health/auth/diagnostic and several multi-line command responses.
+
 ## 3.9.9 — Owner TikTok profile correction
 
 ### Fixed

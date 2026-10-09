@@ -52,5 +52,5 @@ export function formatHealth(snapshot) {
     `Groups: ${snapshot.counters.groups}`,
     `Users: ${snapshot.counters.users}`,
     `Metadata cache: ${snapshot.metadataCacheSize}`
-  ].join('\\n')
+  ].join('\n')
 }
