@@ -531,3 +531,11 @@ test('MediaTooLargeError exposes a stable error code', () => {
   assert.equal(error.code, 'MEDIA_TOO_LARGE')
   assert.equal(error.maxBytes, 1024)
 })
+
+
+test('command module loads with a collision-free command registry', async () => {
+  const commands = await import('../src/commands.js')
+  assert.ok(Array.isArray(commands.COMMANDS))
+  assert.ok(commands.COMMANDS.some(command => command.name === 'help'))
+  assert.ok(commands.COMMANDS.some(command => command.name === 'admins'))
+})
