@@ -1,9 +1,15 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.9.4**  
+**Current version: 3.9.5**  
 **Owner: Kyren**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+
+## 3.9.5 anti-flood moderation fail-closed
+
+- stop message processing when anti-flood metadata or moderation operations fail
+- preserve warning counts until a successful removal response is confirmed
+- validate the participant-removal result before announcing success
 
 ## 3.9.4 keyword moderation fail-closed
 
