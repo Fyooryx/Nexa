@@ -150,6 +150,53 @@ test('deprecated Railway Config as Code file is absent from the source repositor
 
 import { healthSnapshot, formatHealth } from '../src/health.js'
 
+test('formatHealth renders actual line breaks between health fields', () => {
+  const formatted = formatHealth({
+    bot: 'Nexa',
+    version: '3.10.0',
+    owner: 'Vyrael',
+    connection: 'open',
+    authMode: 'saved-session',
+    reconnects: 0,
+    uptime: '1s',
+    node: 'v24.0.0',
+    memory: { rssMb: 10, heapUsedMb: 5, heapTotalMb: 8 },
+    counters: { messages: 2, commands: 1, groups: 1, users: 3 },
+    metadataCacheSize: 0
+  })
+
+  assert.ok(formatted.includes('\n'), 'health fields must be separated by real newlines')
+  assert.doesNotMatch(formatted, /\\n/, 'output must not contain literal backslash-n text')
+  assert.ok(formatted.split('\n').length > 5)
+})
+
+test('diagnose recommends an actionable next step for QR-mode deployments', async () => {
+  const { COMMANDS } = await import('../src/commands.js')
+  const diagnose = COMMANDS.find(command => command.name === 'diagnose')
+  const replies = []
+  const ctx = {
+    sock: { user: null },
+    store: { data: { meta: { messages: 0, commands: 0 }, groups: {}, users: {} } },
+    config: { botName: 'Nexa', botVersion: '3.10.0', ownerName: 'Vyrael', pairingNumber: '' },
+    runtimeState: {
+      connection: 'connecting',
+      connectedAt: null,
+      lastDisconnectedAt: null,
+      lastDisconnectCode: null,
+      reconnects: 0
+    },
+    authMode: 'qr',
+    metadataCacheSize: 0,
+    reply: async text => { replies.push(text) }
+  }
+
+  await diagnose.run(ctx)
+
+  assert.ok(replies[0].includes('\n'), 'diagnostic fields must be separated by real newlines')
+  assert.match(replies[0], /Next action:/)
+  assert.match(replies[0], /interactive terminal|PAIRING_NUMBER/)
+})
+
 test('health snapshot exposes Vyrael owner and runtime counters', () => {
   const snapshot = healthSnapshot({
     sock: { user: { id: 'bot@s.whatsapp.net' } },
