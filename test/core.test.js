@@ -110,7 +110,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.9.4')
+  assert.equal(config.botVersion, '3.9.5')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -331,6 +331,49 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), null)
   for (let i = 0; i < 100; i++) assert.equal(addKeyword(group, 'word-' + i), true)
   assert.equal(addKeyword(group, 'overflow-a'), false)
+})
+
+test('anti-flood stops message processing when moderation fails', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+  const start = source.indexOf('if (!isCommand && group.antiflood) {')
+  const end = source.indexOf('\n    if (group.filterEnabled && !isCommand)', start)
+
+  assert.ok(start >= 0 && end > start, 'anti-flood block should be identifiable')
+  const block = source.slice(start, end)
+  assert.match(block, /if \(!meta\?\.participants\) return/, 'missing group metadata must stop anti-flood processing')
+  const catchIndex = block.lastIndexOf('} catch (error) {')
+  assert.ok(catchIndex >= 0, 'anti-flood should handle failures')
+
+  const catchBlock = block.slice(catchIndex)
+  assert.match(
+    catchBlock,
+    /logger\.(?:warn|error)\(\{ err: error \}, 'anti-flood handler failed[^']*'\)\s*return\s*\n\s*\}/,
+    'anti-flood errors must be logged and stop processing of this message'
+  )
+  assert.doesNotMatch(
+    block,
+    /\.catch\(\(\) => \{\}\)/,
+    'anti-flood moderation actions must not silently swallow failures'
+  )
+
+  const persistBeforeRemoval = block.indexOf('await store.persist()')
+  const removal = block.indexOf('await sock.groupParticipantsUpdate(jid, [sender], \'remove\')')
+  const removalResultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'")
+  const reset = block.indexOf('store.resetWarn(jid, userKey)')
+  const persistAfterReset = block.indexOf('await store.persist()', reset)
+  const successAnnouncement = block.indexOf('dan berhasil dikeluarkan karena anti-flood')
+  assert.ok(
+    persistBeforeRemoval >= 0 && removal > persistBeforeRemoval,
+    'warning count must be persisted before attempting removal'
+  )
+  assert.ok(
+    removalResultCheck > removal && reset > removalResultCheck && persistAfterReset > reset,
+    'warning state must only reset after a successful removal response and then be persisted'
+  )
+  assert.ok(
+    successAnnouncement > removalResultCheck,
+    'removal success must not be announced before a successful removal response'
+  )
 })
 
 test('keyword filter stops message processing when moderation fails', async () => {

@@ -283,6 +283,7 @@ async function handleIncoming(sock, message) {
     if (!isCommand && group.antiflood) {
       try {
         const meta = await getGroupMetadata(sock, jid)
+        if (!meta?.participants) return
         const senderIsAdmin = isAdmin(meta, sender, sock) || (senderAlt && isAdmin(meta, senderAlt, sock))
         if (!senderIsAdmin) {
           const result = floodGuard.hit(`${jid}:${userKey}`, {
@@ -293,7 +294,7 @@ async function handleIncoming(sock, message) {
           if (result.limited) {
             if (group.floodMode === 'delete') {
               if (isBotAdmin(sock, meta)) {
-                await sock.sendMessage(jid, { delete: message.key }).catch(() => {})
+                await sock.sendMessage(jid, { delete: message.key })
               }
               return
             }
@@ -301,19 +302,28 @@ async function handleIncoming(sock, message) {
             if (result.firstViolation) {
               const count = store.addWarn(jid, userKey, 'anti-flood')
               if (count >= config.warnLimit && isBotAdmin(sock, meta)) {
+                // Persist the threshold warning before escalation so failures keep the evidence.
+                await store.persist()
+                const removalResult = await sock.groupParticipantsUpdate(jid, [sender], 'remove')
+                if (
+                  !Array.isArray(removalResult)
+                  || removalResult.length !== 1
+                  || String(removalResult[0]?.status) !== '200'
+                ) {
+                  throw new Error('ANTI_FLOOD_REMOVE_FAILED')
+                }
                 store.resetWarn(jid, userKey)
                 await store.persist()
                 await sock.sendMessage(jid, {
-                  text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) karena anti-flood dan diproses untuk dikeluarkan.`,
+                  text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) dan berhasil dikeluarkan karena anti-flood.`,
                   mentions: [sender]
-                }).catch(() => {})
-                await sock.groupParticipantsUpdate(jid, [sender], 'remove').catch(() => {})
+                })
               } else {
                 await store.persist()
                 await sock.sendMessage(jid, {
                   text: `⚠️ @${numberFromJid(sender)} terdeteksi flood (${result.count} pesan/${Math.round(group.floodWindowMs / 1000)}s). Warning: ${count}/${config.warnLimit}.`,
                   mentions: [sender]
-                }).catch(() => {})
+                })
               }
               return
             }
@@ -322,10 +332,10 @@ async function handleIncoming(sock, message) {
           }
         }
       } catch (error) {
-        logger.warn({ err: error }, 'anti-flood handler failed')
+        logger.error({ err: error }, 'anti-flood handler failed; stopping message processing')
+        return
       }
     }
-
     if (group.filterEnabled && !isCommand) {
       try {
         const meta = await getGroupMetadata(sock, jid)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.9.5 — fail-closed anti-flood moderation
+
+### Fixed
+- Enabled anti-flood now stops message processing when metadata or moderation actions fail.
+- Flood deletion and member-removal failures are no longer silently ignored.
+- Warning counts are persisted before escalation and reset only after a successful participant-removal response.
+- Removal success is announced only after Baileys confirms status 200.
+
 ## 3.9.4 — fail-closed keyword moderation
 
 ### Fixed
