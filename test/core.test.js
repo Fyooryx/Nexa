@@ -333,6 +333,24 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(addKeyword(group, 'overflow-a'), false)
 })
 
+test('keyword filter stops message processing when moderation fails', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+  const start = source.indexOf('if (group.filterEnabled && !isCommand) {')
+  const end = source.indexOf('\n    const mentioned = extractMentions', start)
+
+  assert.ok(start >= 0 && end > start, 'keyword filter block should be identifiable')
+  const block = source.slice(start, end)
+  const catchIndex = block.lastIndexOf('} catch (error) {')
+  assert.ok(catchIndex >= 0, 'keyword filter should handle failures')
+
+  const catchBlock = block.slice(catchIndex)
+  assert.match(
+    catchBlock,
+    /logger\.(?:warn|error)\(\{ err: error \}, 'keyword filter failed[^']*'\)\s*return\s*\n\s*\}/,
+    'filter errors must be logged and stop processing of this message'
+  )
+})
+
 test('JsonStore counts a command once, not twice', async () => {
   const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-counter-')))
   try {
