@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.9.9 — Owner TikTok profile correction
+
+### Fixed
+- Corrected the default and sample owner TikTok handle to `zavriel.id`.
+
 ## 3.9.8 — Railway deployment configuration fix
 
 ### Fixed
