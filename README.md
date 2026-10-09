@@ -1,9 +1,13 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.9.8**  
+**Current version: 3.9.9**  
 **Owner: Vyrael**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
+
+## 3.9.9 owner TikTok profile correction
+
+- Correct owner TikTok handle to `zavriel.id` in defaults and sample configuration.
 
 ## 3.9.8 Railway deployment config fix
 
@@ -127,7 +131,7 @@ BOT_NAME=Nexa
 OWNER_NAME=Vyrael
 OWNER_NUMBER=628xxxxxxxxxx
 OWNER_EMAIL=zavriel.studio@gmail.com
-OWNER_TIKTOK=zavriel.ud
+OWNER_TIKTOK=zavriel.id
 PAIRING_NUMBER=628xxxxxxxxxx
 ```
 

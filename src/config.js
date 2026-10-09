@@ -9,12 +9,12 @@ const int = (value, fallback, min, max) => {
 
 export const config = Object.freeze({
   botName: process.env.BOT_NAME || 'Nexa',
-  botVersion: '3.9.8',
+  botVersion: '3.9.9',
   ownerName: process.env.OWNER_NAME || 'Vyrael',
   prefix: process.env.PREFIX || '.',
   ownerNumber: digits(process.env.OWNER_NUMBER || ''),
   ownerEmail: process.env.OWNER_EMAIL || 'zavriel.studio@gmail.com',
-  ownerTikTok: (process.env.OWNER_TIKTOK || 'zavriel.ud').replace(/^@/, ''),
+  ownerTikTok: (process.env.OWNER_TIKTOK || 'zavriel.id').replace(/^@/, ''),
   authDir: process.env.AUTH_DIR || 'auth_info',
   dataDir: process.env.DATA_DIR || 'data',
   logLevel: process.env.LOG_LEVEL || 'info',

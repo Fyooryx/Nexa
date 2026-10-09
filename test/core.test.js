@@ -110,7 +110,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Vyrael')
-  assert.equal(config.botVersion, '3.9.8')
+  assert.equal(config.botVersion, '3.9.9')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -123,7 +123,7 @@ test('Nexa owner identity and pairing number defaults are explicit', () => {
 test('Vyrael owner profile defaults contain the requested public contact details', () => {
   assert.equal(config.ownerName, 'Vyrael')
   assert.equal(config.ownerEmail, 'zavriel.studio@gmail.com')
-  assert.equal(config.ownerTikTok, 'zavriel.ud')
+  assert.equal(config.ownerTikTok, 'zavriel.id')
 })
 
 test('owner command displays the public contact card to all users', async () => {
@@ -137,7 +137,7 @@ test('owner command displays the public contact card to all users', async () => 
 
   assert.match(replies[0], /Owner: Vyrael/)
   assert.match(replies[0], /Email: zavriel\.studio@gmail\.com/)
-  assert.match(replies[0], /TikTok:.*zavriel\.ud/)
+  assert.match(replies[0], /TikTok:.*zavriel\.id/)
   assert.ok(replies[0].includes('\n'), 'contact details should be separated onto multiple lines')
 })
 
