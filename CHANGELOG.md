@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.9.8 — Railway deployment configuration fix
+
+### Fixed
+- Removed the deprecated `railway.json` Config as Code file that conflicted with the current Railway configuration path.
+- Keep the worker builder, Dockerfile path, health check, and restart policy in the direct Railway service configuration.
+- This change alone is not proof of deployment recovery; verify Railway's latest deployment and runtime state.
+
 ## 3.9.7 — Vyrael owner profile and Railway builder configuration
 
 ### Added

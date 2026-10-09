@@ -110,7 +110,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Vyrael')
-  assert.equal(config.botVersion, '3.9.7')
+  assert.equal(config.botVersion, '3.9.8')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -141,13 +141,11 @@ test('owner command displays the public contact card to all users', async () => 
   assert.ok(replies[0].includes('\n'), 'contact details should be separated onto multiple lines')
 })
 
-test('Railway config explicitly selects the Dockerfile worker and liveness healthcheck', async () => {
-  const source = await readFile(new URL('../railway.json', import.meta.url), 'utf8')
-  const railway = JSON.parse(source)
-  assert.equal(railway.build.builder, 'DOCKERFILE')
-  assert.equal(railway.build.dockerfilePath, 'Dockerfile')
-  assert.equal(railway.deploy.healthcheckPath, '/healthz')
-  assert.equal(railway.deploy.restartPolicyType, 'ALWAYS')
+test('deprecated Railway Config as Code file is absent from the source repository', async () => {
+  await assert.rejects(
+    readFile(new URL('../railway.json', import.meta.url), 'utf8'),
+    error => error.code === 'ENOENT'
+  )
 })
 
 import { healthSnapshot, formatHealth } from '../src/health.js'
