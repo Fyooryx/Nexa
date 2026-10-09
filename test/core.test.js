@@ -64,8 +64,8 @@ import * as metadata from '../src/metadata.js'
 import { MediaTooLargeError, parseCommand, targetFromContext } from '../src/utils.js'
 
 test('participant removal success requires one status-200 result', () => {
-  assert.equal(typeof metadata.isConfirmedSingleParticipantRemoval, 'function')
-  const succeeded = metadata.isConfirmedSingleParticipantRemoval
+  assert.equal(typeof metadata.isConfirmedSingleParticipantUpdate, 'function')
+  const succeeded = metadata.isConfirmedSingleParticipantUpdate
   assert.equal(succeeded([{ status: '200', jid: 'user@s.whatsapp.net' }]), true)
   assert.equal(succeeded([{ status: 200, jid: 'user@s.whatsapp.net' }]), true)
   assert.equal(succeeded([{ status: '403', jid: 'user@s.whatsapp.net' }]), false)
@@ -590,6 +590,50 @@ test('commands exposes authstatus and canonical self-state uses userKey', async 
   assert.doesNotMatch(source, /const user = ctx\.store\.user\(ctx\.sender\)/)
 })
 
+
+
+test('kick, promote and demote do not report success on non-200 results', async () => {
+  const { COMMANDS } = await import('../src/commands.js')
+  const jid = '120363000000000000@g.us'
+  const sender = '628111111111@s.whatsapp.net'
+  const bot = '628222222222@s.whatsapp.net'
+  const target = '628333333333@s.whatsapp.net'
+
+  for (const name of ['kick', 'promote', 'demote']) {
+    const targetAdmin = name === 'demote'
+    const meta = {
+      id: jid,
+      participants: [
+        { id: sender, admin: 'superadmin' },
+        { id: bot, admin: 'admin' },
+        { id: target, ...(targetAdmin ? { admin: 'admin' } : {}) }
+      ]
+    }
+    const replies = []
+    const command = COMMANDS.find(item => item.name === name)
+    await command.run({
+      jid,
+      sender,
+      senderAlt: null,
+      text: '@628333333333',
+      args: ['@628333333333'],
+      message: {
+        message: {
+          extendedTextMessage: { contextInfo: { mentionedJid: [target] } }
+        }
+      },
+      sock: {
+        user: { id: bot },
+        groupMetadata: async () => meta,
+        groupParticipantsUpdate: async () => [{ status: '500', jid: target }]
+      },
+      reply: async text => { replies.push(text) }
+    })
+
+    assert.match(replies.at(-1), /gagal/i, name + ' must report that WhatsApp did not confirm the action')
+    assert.doesNotMatch(replies.at(-1), /berhasil|diproses untuk dikeluarkan|dipromosikan|didemote/i)
+  }
+})
 
 async function createManualWarnFixture() {
   const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-manual-warn-')))
