@@ -138,6 +138,7 @@ test('owner command displays the public contact card to all users', async () => 
   assert.match(replies[0], /Owner: Vyrael/)
   assert.match(replies[0], /Email: zavriel\.studio@gmail\.com/)
   assert.match(replies[0], /TikTok:.*zavriel\.ud/)
+  assert.ok(replies[0].includes('\n'), 'contact details should be separated onto multiple lines')
 })
 
 test('Railway config explicitly selects the Dockerfile worker and liveness healthcheck', async () => {
