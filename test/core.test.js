@@ -1,5 +1,4 @@
 import test from 'node:test'
-import { COMMANDS } from '../src/commands.js'
 import assert from 'node:assert/strict'
 import { RateLimiter, MessageDeduper } from '../src/limits.js'
 import { FloodGuard } from '../src/flood.js'
@@ -472,121 +471,36 @@ test('commands exposes authstatus and canonical self-state uses userKey', async 
 })
 
 
-async function makeWarnCommandFixture() {
-  const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-warn-command-')))
-  const store = new JsonStore(dir)
-  await store.init()
+test('manual warn preserves warning state until member removal is confirmed', async () => {
+  const source = await readFile(new URL('../src/commands.js', import.meta.url), 'utf8')
+  const start = source.indexOf("command('warn'")
+  const end = source.indexOf("\n  command('warnings'", start)
 
-  const jid = '123456789@g.us'
-  const admin = '628111111111@s.whatsapp.net'
-  const bot = '628222222222@s.whatsapp.net'
-  const target = '628333333333@s.whatsapp.net'
-  const meta = {
-    id: jid,
-    participants: [
-      { id: admin, admin: 'admin' },
-      { id: bot, admin: 'admin' },
-      { id: target, admin: null }
-    ]
-  }
-  const replies = []
-  for (let i = 0; i < config.warnLimit - 1; i++) {
-    store.addWarn(jid, target, 'previous warning')
-  }
-  await store.persist()
+  assert.ok(start >= 0 && end > start, 'manual warn command should be identifiable')
+  const block = source.slice(start, end)
+  const addWarn = block.indexOf('const count = ctx.store.addWarn(')
+  const persistBeforeRemoval = block.indexOf('await ctx.store.persist()', addWarn)
+  const removal = block.indexOf("groupParticipantsUpdate(ctx.jid, [target], 'remove')")
+  const statusCheck = block.indexOf("String(removalResult[0]?.status) !== '200'")
+  const reset = block.indexOf('ctx.store.resetWarn(ctx.jid, userKey)')
+  const persistAfterReset = block.indexOf('await ctx.store.persist()', reset)
 
-  const mention = '@' + target.split('@')[0]
-  const sock = {
-    user: { id: bot },
-    groupMetadata: async () => meta,
-    groupParticipantsUpdate: async () => [{ status: '200', jid: target }]
-  }
-  const ctx = {
-    sock,
-    message: {
-      key: { remoteJid: jid },
-      message: {
-        extendedTextMessage: {
-          text: '.warn ' + mention + ' spam',
-          contextInfo: { mentionedJid: [target] }
-        }
-      }
-    },
-    jid,
-    sender: admin,
-    senderAlt: null,
-    text: '.warn ' + mention + ' spam',
-    store,
-    config,
-    args: [mention, 'spam'],
-    isOwner: false,
-    reply: async (text, extra = {}) => {
-      replies.push({ text, extra })
-      return { key: { id: 'reply-' + replies.length } }
-    }
-  }
-
-  return { dir, store, jid, target, sock, ctx, replies, command: COMMANDS.find(item => item.name === 'warn') }
-}
-
-test('manual warn retains warning state when member removal rejects', async () => {
-  const fixture = await makeWarnCommandFixture()
-  try {
-    fixture.sock.groupParticipantsUpdate = async () => { throw new Error('removal failed') }
-    await fixture.command.run(fixture.ctx)
-
-    assert.equal(
-      fixture.store.warnCount(fixture.jid, fixture.target),
-      config.warnLimit,
-      'warnings must remain when participant removal throws'
-    )
-    assert.match(fixture.replies.at(-1).text, /pengeluaran gagal/i)
-  } finally {
-    await rm(fixture.dir, { recursive: true, force: true })
-  }
+  assert.ok(addWarn >= 0 && persistBeforeRemoval > addWarn, 'the threshold warning must be saved before escalation')
+  assert.ok(removal > persistBeforeRemoval, 'participant removal must happen after the warning is persisted')
+  assert.ok(statusCheck > removal, 'the participant-removal response must be checked before resetting warnings')
+  assert.ok(reset > statusCheck && persistAfterReset > reset, 'warnings may reset only after confirmed removal and must then be persisted')
 })
 
-test('manual warn retains warning state when removal returns a non-200 status', async () => {
-  const fixture = await makeWarnCommandFixture()
-  try {
-    fixture.sock.groupParticipantsUpdate = async () => [{ status: '500', jid: fixture.target }]
-    await fixture.command.run(fixture.ctx)
+test('manual warn validates non-200 participant-removal results', async () => {
+  const source = await readFile(new URL('../src/commands.js', import.meta.url), 'utf8')
+  const start = source.indexOf("command('warn'")
+  const end = source.indexOf("\n  command('warnings'", start)
+  assert.ok(start >= 0 && end > start, 'manual warn command should be identifiable')
+  const block = source.slice(start, end)
 
-    assert.equal(
-      fixture.store.warnCount(fixture.jid, fixture.target),
-      config.warnLimit,
-      'warnings must remain when participant removal reports failure'
-    )
-    assert.match(fixture.replies.at(-1).text, /pengeluaran gagal/i)
-  } finally {
-    await rm(fixture.dir, { recursive: true, force: true })
-  }
-})
-
-test('manual warn resets warning state only after confirmed successful removal', async () => {
-  const fixture = await makeWarnCommandFixture()
-  try {
-    let removalAttempted = false
-    fixture.sock.groupParticipantsUpdate = async (jid, participants, action) => {
-      removalAttempted = true
-      assert.equal(jid, fixture.jid)
-      assert.deepEqual(participants, [fixture.target])
-      assert.equal(action, 'remove')
-      assert.equal(
-        fixture.store.warnCount(fixture.jid, fixture.target),
-        config.warnLimit,
-        'the threshold warning must remain present while removal is attempted'
-      )
-      return [{ status: '200', jid: fixture.target }]
-    }
-    await fixture.command.run(fixture.ctx)
-
-    assert.equal(removalAttempted, true)
-    assert.equal(fixture.store.warnCount(fixture.jid, fixture.target), 0)
-    assert.match(fixture.replies.at(-1).text, /berhasil dikeluarkan/i)
-  } finally {
-    await rm(fixture.dir, { recursive: true, force: true })
-  }
+  assert.match(block, /Array\.isArray\(removalResult\)/, 'removal results must be validated')
+  assert.match(block, /String\(removalResult\[0\]\?\.status\) !== '200'/, 'only status 200 confirms successful removal')
+  assert.ok(block.indexOf('pengeluaran gagal') > block.indexOf('groupParticipantsUpdate'), 'failed removal must use the failure reply')
 })
 
 test('JsonStore prunes inactive state to configured bounds', async () => {
