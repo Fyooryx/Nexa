@@ -141,13 +141,11 @@ test('owner command displays the public contact card to all users', async () => 
   assert.ok(replies[0].includes('\n'), 'contact details should be separated onto multiple lines')
 })
 
-test('Railway config explicitly selects the Dockerfile worker and liveness healthcheck', async () => {
-  const source = await readFile(new URL('../railway.json', import.meta.url), 'utf8')
-  const railway = JSON.parse(source)
-  assert.equal(railway.build.builder, 'DOCKERFILE')
-  assert.equal(railway.build.dockerfilePath, 'Dockerfile')
-  assert.equal(railway.deploy.healthcheckPath, '/healthz')
-  assert.equal(railway.deploy.restartPolicyType, 'ALWAYS')
+test('deprecated Railway Config as Code file is absent from the source repository', async () => {
+  await assert.rejects(
+    readFile(new URL('../railway.json', import.meta.url), 'utf8'),
+    error => error.code === 'ENOENT'
+  )
 })
 
 import { healthSnapshot, formatHealth } from '../src/health.js'
