@@ -119,6 +119,36 @@ test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.maxStoredGroups, 10000)
 })
 
+
+test('Vyrael owner profile defaults contain the requested public contact details', () => {
+  assert.equal(config.ownerName, 'Vyrael')
+  assert.equal(config.ownerEmail, 'zavriel.studio@gmail.com')
+  assert.equal(config.ownerTikTok, 'zavriel.ud')
+})
+
+test('owner command displays the public contact card to all users', async () => {
+  const { COMMANDS } = await import('../src/commands.js')
+  const owner = COMMANDS.find(command => command.name === 'owner')
+  const replies = []
+  await owner.run({
+    isOwner: false,
+    reply: async text => { replies.push(text) }
+  })
+
+  assert.match(replies[0], /Owner: Vyrael/)
+  assert.match(replies[0], /Email: zavriel\.studio@gmail\.com/)
+  assert.match(replies[0], /TikTok:.*zavriel\.ud/)
+})
+
+test('Railway config explicitly selects the Dockerfile worker and liveness healthcheck', async () => {
+  const source = await readFile(new URL('../railway.json', import.meta.url), 'utf8')
+  const railway = JSON.parse(source)
+  assert.equal(railway.build.builder, 'DOCKERFILE')
+  assert.equal(railway.build.dockerfilePath, 'Dockerfile')
+  assert.equal(railway.deploy.healthcheckPath, '/healthz')
+  assert.equal(railway.deploy.restartPolicyType, 'ALWAYS')
+})
+
 import { healthSnapshot, formatHealth } from '../src/health.js'
 
 test('health snapshot exposes Kyren owner and runtime counters', () => {
