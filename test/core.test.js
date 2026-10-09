@@ -60,8 +60,19 @@ test('JsonStore initializes and persists normalized group state', async () => {
   }
 })
 
-import { participantMatches, adminSet } from '../src/metadata.js'
+import * as metadata from '../src/metadata.js'
 import { MediaTooLargeError, parseCommand, targetFromContext } from '../src/utils.js'
+
+test('participant removal success requires one status-200 result', () => {
+  assert.equal(typeof metadata.isConfirmedSingleParticipantRemoval, 'function')
+  const succeeded = metadata.isConfirmedSingleParticipantRemoval
+  assert.equal(succeeded([{ status: '200', jid: 'user@s.whatsapp.net' }]), true)
+  assert.equal(succeeded([{ status: 200, jid: 'user@s.whatsapp.net' }]), true)
+  assert.equal(succeeded([{ status: '403', jid: 'user@s.whatsapp.net' }]), false)
+  assert.equal(succeeded([]), false)
+  assert.equal(succeeded([{ status: '200' }, { status: '200' }]), false)
+  assert.equal(succeeded(null), false)
+})
 
 test('LID-aware participant matching recognizes id, phoneNumber and lid', () => {
   const participant = {
@@ -70,9 +81,9 @@ test('LID-aware participant matching recognizes id, phoneNumber and lid', () => 
     lid: '12345@lid',
     admin: 'admin'
   }
-  assert.equal(participantMatches(participant, '12345@lid'), true)
-  assert.equal(participantMatches(participant, '628123456789@s.whatsapp.net'), true)
-  assert.equal(adminSet({ participants: [participant] }).has('12345@lid'), true)
+  assert.equal(metadata.participantMatches(participant, '12345@lid'), true)
+  assert.equal(metadata.participantMatches(participant, '628123456789@s.whatsapp.net'), true)
+  assert.equal(metadata.adminSet({ participants: [participant] }).has('12345@lid'), true)
 })
 
 test('parseCommand honors per-chat prefix', () => {
