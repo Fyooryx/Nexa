@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.9.6 — manual warning state and command registry
+
+### Fixed
+- Manual `.warn` retains the threshold warning count when participant removal throws or returns a non-200 response.
+- Warning state resets and removal success is announced only after exactly one participant result confirms status 200.
+- Removed duplicate `help` and `admins` aliases that caused command-registry construction to throw during module loading.
+
 ## 3.9.5 — fail-closed anti-flood moderation
 
 ### Fixed

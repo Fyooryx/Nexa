@@ -136,7 +136,7 @@ LID: ${lid || '-'}`)
 LID: ${safeIdentity(lid)}`)
   }),
 
-  command('menu', ['help', 'start'], 'General', 'Tampilkan semua fitur.', async ctx => {
+  command('menu', ['start'], 'General', 'Tampilkan semua fitur.', async ctx => {
     const groups = new Map()
     for (const item of COMMANDS) {
       if (!groups.has(item.category)) groups.set(item.category, [])
@@ -642,7 +642,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
     return ctx.sock.sendMessage(ctx.jid, { text, mentions })
   }),
 
-  command('tagadmin', ['admins'], 'Group', 'Mention semua admin grup.', async ctx => {
+  command('tagadmin', [], 'Group', 'Mention semua admin grup.', async ctx => {
     const meta = await requireGroup(ctx)
     const mentions = [...adminSet(meta)]
     if (!mentions.length) return ctx.reply('Tidak ada admin yang terdeteksi.')
@@ -695,20 +695,29 @@ Sender: ${safeIdentity(ctx.sender)}`)
 
     if (count >= config.warnLimit) {
       await requireBotAdmin(ctx, meta)
+      const failureMessage = `⚠️ @${numberFromJid(target)} mencapai batas warning, tetapi pengeluaran gagal.`
+      let removalResult
+
+      try {
+        removalResult = await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
+      } catch {
+        return ctx.reply(failureMessage, { mentions: [target] })
+      }
+
+      if (
+        !Array.isArray(removalResult) ||
+        removalResult.length !== 1 ||
+        String(removalResult[0]?.status) !== '200'
+      ) {
+        return ctx.reply(failureMessage, { mentions: [target] })
+      }
+
       ctx.store.resetWarn(ctx.jid, userKey)
       await ctx.store.persist()
-      try {
-        await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
-        return ctx.reply(
-          `⛔ @${numberFromJid(target)} mencapai batas warning (${config.warnLimit}) dan diproses untuk dikeluarkan.`,
-          { mentions: [target] }
-        )
-      } catch {
-        return ctx.reply(
-          `⚠️ @${numberFromJid(target)} mencapai batas warning, tetapi pengeluaran gagal.`,
-          { mentions: [target] }
-        )
-      }
+      return ctx.reply(
+        `⛔ @${numberFromJid(target)} mencapai batas warning (${config.warnLimit}) dan berhasil dikeluarkan.`,
+        { mentions: [target] }
+      )
     }
 
     return ctx.reply(

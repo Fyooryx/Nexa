@@ -110,7 +110,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.9.5')
+  assert.equal(config.botVersion, '3.9.6')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -471,6 +471,127 @@ test('commands exposes authstatus and canonical self-state uses userKey', async 
 })
 
 
+async function createManualWarnFixture() {
+  const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-manual-warn-')))
+  const store = new JsonStore(dir)
+  await store.init()
+
+  const jid = '120363000000000000@g.us'
+  const sender = '628111111111@s.whatsapp.net'
+  const bot = '628222222222@s.whatsapp.net'
+  const target = '628333333333@s.whatsapp.net'
+  const meta = {
+    id: jid,
+    subject: 'Nexa test group',
+    participants: [
+      { id: sender, admin: 'superadmin' },
+      { id: bot, admin: 'admin' },
+      { id: target }
+    ]
+  }
+  const userKey = store.canonicalParticipant(meta, target)
+  for (let count = 1; count < config.warnLimit; count++) {
+    store.addWarn(jid, userKey, 'previous warning')
+  }
+  await store.persist()
+
+  const replies = []
+  const ctx = {
+    jid,
+    sender,
+    senderAlt: null,
+    text: `@${target.split('@')[0]} spam`,
+    args: [`@${target.split('@')[0]}`, 'spam'],
+    message: {
+      message: {
+        extendedTextMessage: {
+          contextInfo: { mentionedJid: [target] }
+        }
+      }
+    },
+    store,
+    sock: {
+      user: { id: bot },
+      groupMetadata: async () => meta,
+      groupParticipantsUpdate: async () => [{ status: '200', jid: target }]
+    },
+    reply: async (text, options) => {
+      replies.push({ text, options })
+      return { key: { id: 'test-reply' } }
+    }
+  }
+
+  const { COMMANDS } = await import('../src/commands.js')
+  const warn = COMMANDS.find(command => command.name === 'warn')
+  assert.ok(warn, 'the real warn command must be registered')
+  return { dir, store, jid, target, userKey, replies, ctx, warn }
+}
+
+test('manual warn retains the threshold count when member removal throws', async () => {
+  const fixture = await createManualWarnFixture()
+  try {
+    fixture.ctx.sock.groupParticipantsUpdate = async () => {
+      throw new Error('participant removal failed')
+    }
+
+    await fixture.warn.run(fixture.ctx)
+
+    assert.equal(fixture.store.warnCount(fixture.jid, fixture.userKey), config.warnLimit)
+    assert.match(fixture.replies.at(-1).text, /pengeluaran gagal/)
+    assert.doesNotMatch(fixture.replies.at(-1).text, /berhasil dikeluarkan/)
+
+    const persisted = new JsonStore(fixture.dir)
+    await persisted.init()
+    assert.equal(persisted.warnCount(fixture.jid, fixture.userKey), config.warnLimit)
+  } finally {
+    await rm(fixture.dir, { recursive: true, force: true })
+  }
+})
+
+test('manual warn retains the threshold count when participant removal returns non-200', async () => {
+  const fixture = await createManualWarnFixture()
+  try {
+    fixture.ctx.sock.groupParticipantsUpdate = async () => [
+      { status: '500', jid: fixture.target }
+    ]
+
+    await fixture.warn.run(fixture.ctx)
+
+    assert.equal(fixture.store.warnCount(fixture.jid, fixture.userKey), config.warnLimit)
+    assert.match(fixture.replies.at(-1).text, /pengeluaran gagal/)
+    assert.doesNotMatch(fixture.replies.at(-1).text, /berhasil dikeluarkan/)
+
+    const persisted = new JsonStore(fixture.dir)
+    await persisted.init()
+    assert.equal(persisted.warnCount(fixture.jid, fixture.userKey), config.warnLimit)
+  } finally {
+    await rm(fixture.dir, { recursive: true, force: true })
+  }
+})
+
+test('manual warn resets the threshold count only after confirmed participant removal', async () => {
+  const fixture = await createManualWarnFixture()
+  try {
+    let countAtRemoval = null
+    fixture.ctx.sock.groupParticipantsUpdate = async () => {
+      countAtRemoval = fixture.store.warnCount(fixture.jid, fixture.userKey)
+      return [{ status: '200', jid: fixture.target }]
+    }
+
+    await fixture.warn.run(fixture.ctx)
+
+    assert.equal(countAtRemoval, config.warnLimit, 'warning state must remain until status 200')
+    assert.equal(fixture.store.warnCount(fixture.jid, fixture.userKey), 0)
+    assert.match(fixture.replies.at(-1).text, /berhasil dikeluarkan/)
+
+    const persisted = new JsonStore(fixture.dir)
+    await persisted.init()
+    assert.equal(persisted.warnCount(fixture.jid, fixture.userKey), 0)
+  } finally {
+    await rm(fixture.dir, { recursive: true, force: true })
+  }
+})
+
 test('JsonStore prunes inactive state to configured bounds', async () => {
   const dir = await import('node:fs/promises').then(m => m.mkdtemp(path.join(os.tmpdir(), 'nexa-prune-')))
   try {
@@ -498,4 +619,12 @@ test('MediaTooLargeError exposes a stable error code', () => {
   const error = new MediaTooLargeError(1024)
   assert.equal(error.code, 'MEDIA_TOO_LARGE')
   assert.equal(error.maxBytes, 1024)
+})
+
+
+test('command module loads with a collision-free command registry', async () => {
+  const commands = await import('../src/commands.js')
+  assert.ok(Array.isArray(commands.COMMANDS))
+  assert.ok(commands.COMMANDS.some(command => command.name === 'help'))
+  assert.ok(commands.COMMANDS.some(command => command.name === 'admins'))
 })
