@@ -337,9 +337,9 @@ async function handleIncoming(sock, message) {
             const count = store.addWarn(jid, userKey, `keyword filter: ${matched}`)
             if (count >= config.warnLimit) {
               if (isBotAdmin(sock, meta)) {
+                await sock.sendMessage(jid, { delete: message.key })
                 store.resetWarn(jid, userKey)
                 await store.persist()
-                await sock.sendMessage(jid, { delete: message.key }).catch(() => {})
                 await sock.sendMessage(jid, {
                   text: `⛔ @${numberFromJid(sender)} mencapai batas warning (${config.warnLimit}) karena filter grup dan diproses untuk dikeluarkan.`,
                   mentions: [sender]
@@ -369,7 +369,8 @@ async function handleIncoming(sock, message) {
           return
         }
       } catch (error) {
-        logger.warn({ err: error }, 'keyword filter failed')
+        logger.error({ err: error }, 'keyword filter failed; stopping message processing')
+        return
       }
     }
 

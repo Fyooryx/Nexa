@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.4 — fail-closed keyword moderation
+
+### Fixed
+- Message processing now stops when enabled keyword moderation fails, preventing downstream automation and command handling for that message.
+- Moderation deletion errors are no longer silently ignored, and warning escalation state is not reset before deletion succeeds.
+
 ## 3.9.3 — Node 24 LTS and Docker build integrity
 
 ### Fixed

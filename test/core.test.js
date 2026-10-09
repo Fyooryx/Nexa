@@ -110,7 +110,7 @@ test('Docker build copies the lockfile before running npm ci', async () => {
 
 test('Nexa owner identity and pairing number defaults are explicit', () => {
   assert.equal(config.ownerName, 'Kyren')
-  assert.equal(config.botVersion, '3.9.3')
+  assert.equal(config.botVersion, '3.9.4')
   assert.equal(config.pairingNumber, '')
   assert.equal(config.healthHost, '0.0.0.0')
   assert.equal(config.healthPort, 3000)
@@ -331,6 +331,29 @@ test('keyword filter add/remove/match lifecycle', () => {
   assert.equal(findMatchedKeyword('Ini SCAM sekarang', group), null)
   for (let i = 0; i < 100; i++) assert.equal(addKeyword(group, 'word-' + i), true)
   assert.equal(addKeyword(group, 'overflow-a'), false)
+})
+
+test('keyword filter stops message processing when moderation fails', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+  const start = source.indexOf('if (group.filterEnabled && !isCommand) {')
+  const end = source.indexOf('\n    const mentioned = extractMentions', start)
+
+  assert.ok(start >= 0 && end > start, 'keyword filter block should be identifiable')
+  const block = source.slice(start, end)
+  const catchIndex = block.lastIndexOf('} catch (error) {')
+  assert.ok(catchIndex >= 0, 'keyword filter should handle failures')
+
+  const catchBlock = block.slice(catchIndex)
+  assert.match(
+    catchBlock,
+    /logger\.(?:warn|error)\(\{ err: error \}, 'keyword filter failed[^']*'\)\s*return\s*\n\s*\}/,
+    'filter errors must be logged and stop processing of this message'
+  )
+  assert.doesNotMatch(
+    block,
+    /sendMessage\(jid, \{ delete: message\.key \}\)\.catch\(\(\) => \{\}\)/,
+    'moderation deletion failures must reach the fail-closed handler'
+  )
 })
 
 test('JsonStore counts a command once, not twice', async () => {
