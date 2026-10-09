@@ -361,7 +361,7 @@ test('anti-flood stops message processing when moderation fails', async () => {
   const removalResultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'")
   const reset = block.indexOf('store.resetWarn(jid, userKey)')
   const persistAfterReset = block.indexOf('await store.persist()', reset)
-  const successAnnouncement = block.indexOf('mencapai batas warning karena anti-flood')
+  const successAnnouncement = block.indexOf('dan berhasil dikeluarkan karena anti-flood')
   assert.ok(
     persistBeforeRemoval >= 0 && removal > persistBeforeRemoval,
     'warning count must be persisted before attempting removal'
