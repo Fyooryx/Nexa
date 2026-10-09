@@ -1,16 +1,21 @@
 # Nexa — All-in-One WhatsApp Bot
 
-**Current version: 3.9.7**  
+**Current version: 3.9.8**  
 **Owner: Vyrael**
 
 Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 
-## 3.9.7 owner contact and Railway deployment configuration
+## 3.9.8 Railway deployment config fix
+
+- removed deprecated `railway.json` Config as Code manifest
+- keep builder, Dockerfile path, health check, and restart policy in Railway service settings
+- deployment still requires a successful Railway build and an active WhatsApp session before runtime can be considered healthy
+
+## 3.9.7 owner contact
 
 - owner identity defaults to Vyrael
 - `.owner` displays the configured WhatsApp link, email, and TikTok contact
 - email and TikTok are configurable through `OWNER_EMAIL` and `OWNER_TIKTOK`
-- Railway config-as-code explicitly pins the Dockerfile builder and `/healthz` liveness check
 
 ## 3.9.6 manual warning and command registry fixes
 
