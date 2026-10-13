@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.11.0 — keyword escalation safety and owner diagnostics
+
+### Added
+- `.diagnose` reports whether owner authorization is configured and gives a safe corrective action when `OWNER_NUMBER` is missing, without displaying the number.
+
+### Fixed
+- Keyword-filter warning escalation now persists threshold warnings before side effects.
+- Member removal must return exactly one status-200 result before warning history is reset or success is announced.
+- Deletion/removal failures leave warning evidence intact and stop downstream message processing.
+- AI HTTP failures that remain after retries count toward the circuit breaker.
+- Anti-flood timestamp history is bounded per sender during sustained traffic.
+- `/metrics` remains disabled when `METRICS_TOKEN` is empty and requires a bearer token when enabled.
+
 ## 3.10.0 — actionable diagnostics and multiline output
 
 ### Added

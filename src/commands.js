@@ -2,10 +2,10 @@ import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
 import { CommandRegistry } from './registry.js'
-import { CircuitBreaker, CircuitOpenError, fetchWithRetry } from './resilience.js'
+import { CircuitBreaker, CircuitOpenError, fetchSuccessfulResponse } from './resilience.js'
 import { formatHealth, healthSnapshot } from './health.js'
 import { addKeyword, findMatchedKeyword, listKeywords, removeKeyword } from './filters.js'
-import { adminParticipants, adminSet, isAdmin, isBotAdmin, participantJids } from './metadata.js'
+import { adminParticipants, adminSet, isAdmin, isBotAdmin, isConfirmedSingleParticipantUpdate, participantJids } from './metadata.js'
 import {
   downloadNode,
   extractMentions,
@@ -56,6 +56,16 @@ async function requireBotAdmin(ctx, meta = null) {
 
 async function requireOwner(ctx) {
   if (!ctx.isOwner) throw new Error('OWNER_ONLY')
+}
+
+async function tryParticipantUpdate(ctx, target, action) {
+  try {
+    const results = await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], action)
+    return isConfirmedSingleParticipantUpdate(results)
+  } catch (error) {
+    ctx.logger?.error?.({ err: error, action }, 'WhatsApp participant update failed')
+    return false
+  }
 }
 
 function settings(ctx) {
@@ -118,6 +128,10 @@ export const COMMANDS = [
       `Auth: ${snapshot.authMode}`,
       `Bot identity: ${snapshot.connected ? safeIdentity(ctx.sock.user?.id) : 'not connected'}`,
       `Pairing number: ${pairing}`,
+      `Owner authorization: ${ctx.config.ownerNumber ? 'configured' : 'not configured'}`,
+      ...(!ctx.config.ownerNumber ? [
+        'Owner setup: set OWNER_NUMBER to an active WhatsApp number you control; the number is never displayed.'
+      ] : []),
       `Groups: ${snapshot.counters.groups}`,
       `Users: ${snapshot.counters.users}`,
       `Messages: ${snapshot.counters.messages}`,
@@ -387,7 +401,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
 
     let response
     try {
-      response = await aiCircuit.execute(() => fetchWithRetry(
+      response = await aiCircuit.execute(() => fetchSuccessfulResponse(
         `${config.ai.baseUrl}/chat/completions`,
         {
           method: 'POST',
@@ -407,7 +421,6 @@ Sender: ${safeIdentity(ctx.sender)}`)
           baseDelayMs: config.ai.retryBaseMs
         }
       ))
-      if (!response.ok) throw new Error(`AI_HTTP_${response.status}`)
     } catch (error) {
       if (error instanceof CircuitOpenError) {
         return ctx.reply('🛑 Modul AI sedang cooldown karena provider gagal berulang. Coba lagi sebentar.')
@@ -680,8 +693,11 @@ Sender: ${safeIdentity(ctx.sender)}`)
     const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan member target.')
     if (isAdmin(meta, target, ctx.sock)) return ctx.reply('Target adalah admin. Cabut adminnya dulu.')
-    await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
-    return ctx.reply(`✅ @${numberFromJid(target)} diproses untuk dikeluarkan.`, { mentions: [target] })
+    const removed = await tryParticipantUpdate(ctx, target, 'remove')
+    if (!removed) {
+      return ctx.reply(`⚠️ Pengeluaran @${numberFromJid(target)} gagal atau belum dikonfirmasi oleh WhatsApp.`, { mentions: [target] })
+    }
+    return ctx.reply(`✅ @${numberFromJid(target)} berhasil dikeluarkan.`, { mentions: [target] })
   }),
 
   command('promote', [], 'Moderation', 'Jadikan target admin.', async ctx => {
@@ -689,7 +705,10 @@ Sender: ${safeIdentity(ctx.sender)}`)
     await requireBotAdmin(ctx, meta)
     const target = await resolveTarget(ctx, meta)
     if (!target) return ctx.reply('Mention atau reply pesan member target.')
-    await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'promote')
+    const promoted = await tryParticipantUpdate(ctx, target, 'promote')
+    if (!promoted) {
+      return ctx.reply(`⚠️ Promosi @${numberFromJid(target)} gagal atau belum dikonfirmasi oleh WhatsApp.`, { mentions: [target] })
+    }
     return ctx.reply(`✅ @${numberFromJid(target)} dipromosikan.`, { mentions: [target] })
   }),
 
@@ -701,7 +720,10 @@ Sender: ${safeIdentity(ctx.sender)}`)
     if (ctx.isOwner && target === ctx.sender) {
       return ctx.reply('Owner tidak bisa menghapus status adminnya sendiri lewat command ini.')
     }
-    await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'demote')
+    const demoted = await tryParticipantUpdate(ctx, target, 'demote')
+    if (!demoted) {
+      return ctx.reply(`⚠️ Pencabutan admin @${numberFromJid(target)} gagal atau belum dikonfirmasi oleh WhatsApp.`, { mentions: [target] })
+    }
     return ctx.reply(`✅ @${numberFromJid(target)} didemote.`, { mentions: [target] })
   }),
 
@@ -718,21 +740,8 @@ Sender: ${safeIdentity(ctx.sender)}`)
     if (count >= config.warnLimit) {
       await requireBotAdmin(ctx, meta)
       const failureMessage = `⚠️ @${numberFromJid(target)} mencapai batas warning, tetapi pengeluaran gagal.`
-      let removalResult
-
-      try {
-        removalResult = await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], 'remove')
-      } catch {
-        return ctx.reply(failureMessage, { mentions: [target] })
-      }
-
-      if (
-        !Array.isArray(removalResult) ||
-        removalResult.length !== 1 ||
-        String(removalResult[0]?.status) !== '200'
-      ) {
-        return ctx.reply(failureMessage, { mentions: [target] })
-      }
+      const removed = await tryParticipantUpdate(ctx, target, 'remove')
+      if (!removed) return ctx.reply(failureMessage, { mentions: [target] })
 
       ctx.store.resetWarn(ctx.jid, userKey)
       await ctx.store.persist()
