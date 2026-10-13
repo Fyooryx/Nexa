@@ -18,6 +18,6 @@ RUN mkdir -p /app/runtime/auth_info /app/runtime/data \
 
 USER node
 
-VOLUME ["/app/runtime"]
-
+# Persistent storage is attached as a Railway Volume at /app/runtime.
+# Railway's Dockerfile builder rejects Docker's VOLUME instruction.
 CMD ["npm", "start"]
