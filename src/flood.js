@@ -13,8 +13,9 @@ export class FloodGuard {
     const limited = fresh.length >= safeMax
     const firstViolation = limited && fresh.length === safeMax
     fresh.push(now)
-    this.buckets.set(key, fresh)
-    return { limited, firstViolation, count: fresh.length }
+    const bounded = fresh.slice(-(safeMax + 1))
+    this.buckets.set(key, bounded)
+    return { limited, firstViolation, count: bounded.length }
   }
 
   prune(maxAgeMs = 60000) {

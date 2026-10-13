@@ -113,6 +113,12 @@ export async function fetchWithRetry(
   }
 }
 
+export async function fetchSuccessfulResponse(url, options = {}, retryOptions = {}) {
+  const response = await fetchWithRetry(url, options, retryOptions)
+  if (!response.ok) throw new Error(`AI_HTTP_${response.status}`)
+  return response
+}
+
 function defaultShouldRetry(response) {
   return response?.status === 429 || response?.status >= 500
 }

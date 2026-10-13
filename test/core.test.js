@@ -19,6 +19,21 @@ test('FloodGuard trips after the configured threshold', () => {
   assert.equal(guard.hit('g:u', { windowMs: 1000, max: 2 }).firstViolation, false)
 })
 
+test('FloodGuard bounds timestamp history during sustained flooding', () => {
+  const max = 3
+  const guard = new FloodGuard({ maxKeys: 1 })
+  let firstViolations = 0
+
+  for (let i = 0; i < 5000; i++) {
+    const result = guard.hit('g:u', { windowMs: 60000, max })
+    if (result.firstViolation) firstViolations += 1
+    assert.ok(result.count <= max + 1)
+  }
+
+  assert.equal(guard.buckets.get('g:u').length, max + 1)
+  assert.equal(firstViolations, 1)
+})
+
 test('RateLimiter blocks after max calls inside window', () => {
   const limiter = new RateLimiter({ intervalMs: 1000, max: 2 })
   assert.equal(limiter.allow('u'), true)
@@ -425,6 +440,7 @@ test('health server exposes liveness and connection readiness', async () => {
 
     const metrics = await fetch(metricsBase + '/metrics')
     assert.equal(metrics.status, 503)
+    assert.deepEqual(await metrics.json(), { error: 'metrics_auth_required' })
     await metricsHealth.close()
 
     const head = await fetch(base + '/healthz', { method: 'HEAD' })

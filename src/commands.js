@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { config } from './config.js'
 import { CommandRegistry } from './registry.js'
-import { CircuitBreaker, CircuitOpenError, fetchWithRetry } from './resilience.js'
+import { CircuitBreaker, CircuitOpenError, fetchSuccessfulResponse } from './resilience.js'
 import { formatHealth, healthSnapshot } from './health.js'
 import { addKeyword, findMatchedKeyword, listKeywords, removeKeyword } from './filters.js'
 import { adminParticipants, adminSet, isAdmin, isBotAdmin, isConfirmedSingleParticipantUpdate, participantJids } from './metadata.js'
@@ -401,7 +401,7 @@ Sender: ${safeIdentity(ctx.sender)}`)
 
     let response
     try {
-      response = await aiCircuit.execute(() => fetchWithRetry(
+      response = await aiCircuit.execute(() => fetchSuccessfulResponse(
         `${config.ai.baseUrl}/chat/completions`,
         {
           method: 'POST',
@@ -421,7 +421,6 @@ Sender: ${safeIdentity(ctx.sender)}`)
           baseDelayMs: config.ai.retryBaseMs
         }
       ))
-      if (!response.ok) throw new Error(`AI_HTTP_${response.status}`)
     } catch (error) {
       if (error instanceof CircuitOpenError) {
         return ctx.reply('🛑 Modul AI sedang cooldown karena provider gagal berulang. Coba lagi sebentar.')

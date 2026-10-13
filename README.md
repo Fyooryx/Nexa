@@ -10,6 +10,8 @@ Nexa is a modular AIO WhatsApp bot built with Node.js + Baileys.
 - Keyword-filter warnings remain persisted when message deletion or participant removal fails.
 - Member removal is validated before warning history is reset or success is announced.
 - `.diagnose` now reports whether owner authorization is configured without displaying the configured number.
+- AI HTTP failures that remain after retries count toward the circuit breaker.
+- Anti-flood timestamp history is bounded per sender during sustained traffic.
 
 ## 3.10.0 actionable diagnostics
 
@@ -419,12 +421,12 @@ Important settings:
 - `STORE_FLUSH_MS`: periodic state flush interval (5s–120s)
 - `HEALTH_HOST` / `HEALTH_PORT`: runtime health server binding
 - `PORT`: hosted-platform override for the health server port
-- `/metrics`: Prometheus-compatible runtime telemetry; set `METRICS_TOKEN` to require bearer authentication
+- `/metrics`: Prometheus-compatible runtime telemetry; disabled when `METRICS_TOKEN` is empty. When enabled, requests require `Authorization: Bearer <METRICS_TOKEN>`.
 - `AI_MAX_RETRIES`: AI transient-failure retry count
 - `AI_RETRY_BASE_MS`: base delay for AI exponential backoff
 - `AI_CIRCUIT_FAILURE_THRESHOLD`: failures before the AI circuit opens
 - `AI_CIRCUIT_RESET_MS`: cooldown before a half-open recovery probe
-- `METRICS_TOKEN`: optional bearer token for `/metrics`
+- `METRICS_TOKEN`: bearer token required to enable `/metrics`; leave empty to keep the endpoint disabled.
 - `AI_*`: optional OpenAI-compatible AI backend
 
 ## Security / operations
