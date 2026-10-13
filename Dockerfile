@@ -4,6 +4,10 @@ ENV NODE_ENV=production \
     AUTH_DIR=/app/runtime/auth_info \
     DATA_DIR=/app/runtime/data
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -19,5 +23,6 @@ RUN mkdir -p /app/runtime/auth_info /app/runtime/data \
 USER node
 
 # Persistent storage is attached as a Railway Volume at /app/runtime.
-# Railway's Dockerfile builder rejects Docker's VOLUME instruction.
-CMD ["npm", "start"]
+# Railway mounts volumes as root; start.sh repairs ownership and drops privileges.
+# The Dockerfile VOLUME instruction is not supported by Railway.
+CMD ["/app/start.sh"]
