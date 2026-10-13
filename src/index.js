@@ -22,7 +22,7 @@ import { findCommand, handleGroupAutomation } from './commands.js'
 import { RateLimiter, MessageDeduper } from './limits.js'
 import { FloodGuard } from './flood.js'
 import { findMatchedKeyword } from './filters.js'
-import { isAdmin, isBotAdmin } from './metadata.js'
+import { isAdmin, isBotAdmin, isConfirmedSingleParticipantUpdate } from './metadata.js'
 import { runtime, markClosed, markConnecting, markOpen } from './runtime.js'
 
 const logger = pino({ level: config.logLevel })
@@ -305,11 +305,7 @@ async function handleIncoming(sock, message) {
                 // Persist the threshold warning before escalation so failures keep the evidence.
                 await store.persist()
                 const removalResult = await sock.groupParticipantsUpdate(jid, [sender], 'remove')
-                if (
-                  !Array.isArray(removalResult)
-                  || removalResult.length !== 1
-                  || String(removalResult[0]?.status) !== '200'
-                ) {
+                if (!isConfirmedSingleParticipantUpdate(removalResult)) {
                   throw new Error('ANTI_FLOOD_REMOVE_FAILED')
                 }
                 store.resetWarn(jid, userKey)
@@ -351,11 +347,7 @@ async function handleIncoming(sock, message) {
                 await store.persist()
                 await sock.sendMessage(jid, { delete: message.key })
                 const removalResult = await sock.groupParticipantsUpdate(jid, [sender], 'remove')
-                if (
-                  !Array.isArray(removalResult)
-                  || removalResult.length !== 1
-                  || String(removalResult[0]?.status) !== '200'
-                ) {
+                if (!isConfirmedSingleParticipantUpdate(removalResult)) {
                   throw new Error('KEYWORD_FILTER_REMOVE_FAILED')
                 }
                 store.resetWarn(jid, userKey)

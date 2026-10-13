@@ -447,7 +447,7 @@ test('anti-flood stops message processing when moderation fails', async () => {
 
   const persistBeforeRemoval = block.indexOf('await store.persist()')
   const removal = block.indexOf('await sock.groupParticipantsUpdate(jid, [sender], \'remove\')')
-  const removalResultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'")
+  const removalResultCheck = block.indexOf("isConfirmedSingleParticipantUpdate(removalResult)")
   const reset = block.indexOf('store.resetWarn(jid, userKey)')
   const persistAfterReset = block.indexOf('await store.persist()', reset)
   const successAnnouncement = block.indexOf('dan berhasil dikeluarkan karena anti-flood')
@@ -500,7 +500,7 @@ test('keyword warning escalation preserves counts until member removal is confir
   const deleteMessage = block.indexOf('await sock.sendMessage(jid, { delete: message.key })', count)
   const persistBeforeDelete = block.lastIndexOf('await store.persist()', deleteMessage)
   const removal = block.indexOf('const removalResult = await sock.groupParticipantsUpdate')
-  const resultCheck = block.indexOf("String(removalResult[0]?.status) !== '200'", removal)
+  const resultCheck = block.indexOf("isConfirmedSingleParticipantUpdate(removalResult)", removal)
   const reset = block.indexOf('store.resetWarn(jid, userKey)', count)
   const successAnnouncement = block.indexOf('berhasil dikeluarkan', count)
 

@@ -1,5 +1,11 @@
 import { isGroupJid, normalizeJid } from './utils.js'
 
+export function isConfirmedSingleParticipantUpdate(results) {
+  return Array.isArray(results)
+    && results.length === 1
+    && String(results[0]?.status) === '200'
+}
+
 export function participantJids(participant) {
   return [
     participant?.id,
