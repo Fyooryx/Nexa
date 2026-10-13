@@ -312,6 +312,38 @@ test('fetchWithRetry respects Retry-After over exponential delay', async () => {
 })
 
 
+test('HTTP error responses count as circuit-breaker failures after retries are exhausted', async () => {
+  const { fetchSuccessfulResponse } = await import('../src/resilience.js')
+  assert.equal(typeof fetchSuccessfulResponse, 'function')
+
+  let calls = 0
+  const breaker = new CircuitBreaker({
+    failureThreshold: 1,
+    resetTimeoutMs: 1000,
+    now: () => 0
+  })
+  const request = () => breaker.execute(() => fetchSuccessfulResponse(
+    'http://nexa.test',
+    {},
+    {
+      retries: 1,
+      baseDelayMs: 1,
+      maxDelayMs: 1,
+      sleep: async () => {},
+      fetchImpl: async () => {
+        calls += 1
+        return new Response('unavailable', { status: 503 })
+      }
+    }
+  ))
+
+  await assert.rejects(request, /AI_HTTP_503/)
+  assert.equal(calls, 2)
+  assert.equal(breaker.status.state, 'open')
+  await assert.rejects(request, CircuitOpenError)
+  assert.equal(calls, 2, 'an open circuit must block another HTTP request')
+})
+
 test('RuntimeTelemetry produces bounded process metrics', () => {
   const telemetry = new RuntimeTelemetry({ resolutionMs: 10 }).start()
   try {
